@@ -8,14 +8,14 @@
 <style>
   :root {
     color-scheme: dark;
-    --fg: #4da3ff;
-    --tide: #4da3ff;
+    --fg: #2fd36f;
+    --tide: #2fd36f;
     --panel: #08090b;
     --ink: #f2f3f5;
     --soft: #c4c7cd;
     --track: #2b2e36;
     --edge: #5a5f6b;
-    --c: 255, 255, 255;
+    --cloud: #ffffff;
     --pad: clamp(5px, 1.5vmin, 14px);
   }
 
@@ -61,38 +61,23 @@
   #starsB .twinkle { animation: blink 7s ease-in-out infinite reverse; }
   @keyframes blink { 50% { opacity: .15; } }
 
+  /* Cloud layers: a noise texture made once, used as a mask over a tintable colour. */
   .clouds {
     position: absolute;
     left: 0;
     width: 200%;
     opacity: 0;
-    background-repeat: repeat-x;
-    background-size: 50% 100%;
+    background: var(--cloud);
+    -webkit-mask-repeat: repeat-x;
+    mask-repeat: repeat-x;
+    -webkit-mask-size: 50% 100%;
+    mask-size: 50% 100%;
     will-change: transform;
-    animation: drift 150s linear infinite;
+    animation: drift linear infinite;
   }
-  #cloudsFar {
-    top: 0;
-    height: 58%;
-    background-image:
-      radial-gradient(ellipse 13% 24% at 14% 34%, rgba(var(--c), .85) 35%, transparent 72%),
-      radial-gradient(ellipse 9% 20% at 22% 26%, rgba(var(--c), .8) 35%, transparent 72%),
-      radial-gradient(ellipse 15% 22% at 56% 22%, rgba(var(--c), .8) 35%, transparent 72%),
-      radial-gradient(ellipse 10% 17% at 66% 30%, rgba(var(--c), .75) 35%, transparent 72%),
-      radial-gradient(ellipse 12% 20% at 88% 44%, rgba(var(--c), .7) 35%, transparent 72%);
-  }
-  #cloudsNear {
-    top: 12%;
-    height: 72%;
-    animation-duration: 85s;
-    background-image:
-      radial-gradient(ellipse 17% 25% at 8% 52%, rgba(var(--c), .95) 40%, transparent 72%),
-      radial-gradient(ellipse 12% 22% at 18% 40%, rgba(var(--c), .95) 40%, transparent 72%),
-      radial-gradient(ellipse 14% 20% at 28% 55%, rgba(var(--c), .9) 40%, transparent 72%),
-      radial-gradient(ellipse 18% 26% at 62% 44%, rgba(var(--c), .95) 40%, transparent 72%),
-      radial-gradient(ellipse 12% 22% at 74% 34%, rgba(var(--c), .9) 40%, transparent 72%),
-      radial-gradient(ellipse 13% 20% at 84% 56%, rgba(var(--c), .85) 40%, transparent 72%);
-  }
+  #cloudFar { top: 0; height: 55%; animation-duration: 260s; }
+  #cloudMid { top: 6%; height: 70%; animation-duration: 170s; }
+  #cloudNear { top: 14%; height: 80%; animation-duration: 105s; }
   @keyframes drift { to { transform: translate3d(-50%, 0, 0); } }
 
   .rain { position: absolute; left: 0; right: 0; bottom: 0; opacity: 0; will-change: transform; }
@@ -127,20 +112,23 @@
   .app {
     position: relative;
     display: grid;
+    grid-template-columns: minmax(0, 1fr); /* long labels may never widen the page */
     grid-template-rows: minmax(0, 1fr) auto auto auto auto;
     gap: var(--pad);
     height: 100%;
     padding: var(--pad);
   }
 
-  /* Open sky: sun path, time, weather */
+  /* Open sky: the sun's arch, time, weather */
   .world { position: relative; min-height: 0; }
   #arc { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
   #arc path { fill: none; stroke-linecap: round; }
-  #arc .under { stroke: rgba(8, 9, 11, .35); stroke-width: 6; }
-  #arc .base { stroke: rgba(255, 255, 255, .6); stroke-width: 2.4; }
-  #arc .past { stroke: #fff; stroke-width: 3.4; stroke-dasharray: 0 1; }
-  #arc .hz { stroke: rgba(255, 255, 255, .75); stroke-width: 1.2; }
+  #arc .shadow { stroke: rgba(8, 9, 11, .35); stroke-width: 9; }
+  #arc .track { stroke-width: 4; opacity: .38; }
+  #arc .done { stroke-width: 4; stroke-dasharray: 0 1; }
+  #arc .night.track { opacity: .3; }
+  #arc .hz { stroke: rgba(255, 255, 255, .7); stroke-width: 1.2; }
+  #arc .tick { stroke: #ffd7a1; stroke-width: 2.5; opacity: .95; }
   #arc text {
     fill: #fff;
     font-weight: 700;
@@ -166,14 +154,15 @@
     border-radius: 11px;
   }
   .now { font-size: 1.75em; font-weight: 700; line-height: 1.05; font-variant-numeric: tabular-nums; }
-  .today, .sub, .cond { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .today, .sub, .cond, .next { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .right { text-align: right; }
   .cond { font-weight: 700; }
+  .next { font-variant-numeric: tabular-nums; }
 
   /* Timer tiles */
   .main { display: flex; align-items: stretch; gap: var(--pad); }
   .digits { display: flex; gap: var(--pad); }
-  .tile, .side, .power, .fact { background: var(--panel); }
+  .tile, .side, .power, .fact, .daybar { background: var(--panel); }
   .tile {
     display: flex;
     flex-direction: column;
@@ -185,7 +174,7 @@
   .num {
     min-width: 2ch;
     color: var(--fg);
-    font-size: clamp(26px, min(10vw, 22vh), 190px);
+    font-size: clamp(26px, min(10vw, 16vh), 190px);
     font-weight: 700;
     font-variant-numeric: tabular-nums;
     line-height: 1;
@@ -193,31 +182,38 @@
   }
   .lab { color: var(--soft); font-size: .86em; }
   .finished {
+    flex: 1;
     display: flex;
     align-items: center;
+    justify-content: center;
     padding: 0 .4em;
     color: var(--fg);
     background: var(--panel);
     border-radius: 12px;
-    font-size: clamp(24px, min(9vw, 18vh), 110px);
+    font-size: clamp(16px, min(4vw, 7vh), 48px);
     font-weight: 700;
     line-height: 1.2;
+    text-align: center;
   }
   .side {
     flex: 1;
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
     justify-content: center;
-    gap: clamp(3px, 1vmin, 12px);
+    gap: clamp(2px, .8vmin, 9px);
     min-width: 0;
-    padding: clamp(3px, 1vmin, 12px) clamp(6px, 1.6vw, 18px);
+    padding: clamp(3px, 1vmin, 12px) clamp(6px, 1.6vw, 16px);
     border-radius: 12px;
-    text-align: right;
   }
-  .line { color: var(--fg); font-size: 1.14em; font-weight: 700; }
-  button {
-    padding: .32em .9em;
+  .line { color: var(--fg); font-size: 1.2em; font-weight: 700; text-align: right; }
+  .exam { color: var(--soft); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .exam b { color: var(--ink); }
+
+  /* Hourly timer */
+  .hour { display: flex; align-items: center; gap: 6px; }
+  .hour button, .mini {
+    flex: none;
+    padding: .25em .7em;
     color: var(--panel);
     background: var(--fg);
     border: 0;
@@ -229,15 +225,34 @@
     cursor: pointer;
   }
   button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .hourTrack { flex: 1; height: clamp(8px, 2.4vh, 22px); padding: 2px; border: 2px solid var(--edge); border-radius: 999px; }
+  .hourInner { height: 100%; background: var(--track); border-radius: 999px; overflow: hidden; }
+  .hourFill { width: 100%; height: 100%; background: var(--fg); }
+  .hourRead { flex: none; min-width: 5ch; color: var(--fg); font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+  body.overtime .hourRead { animation: pulse 1.4s ease-in-out infinite; }
+  .last { display: flex; justify-content: flex-end; align-items: center; gap: 6px; color: var(--soft); font-size: .9em; white-space: nowrap; overflow: hidden; }
+  .last .mini { padding: .15em .55em; font-size: .95em; }
+  .last a { color: var(--ink); }
+  @keyframes pulse { 50% { opacity: .55; } }
 
-  /* Battery */
-  .power {
+  /* Today's bar */
+  .daybar {
     display: flex;
     flex-direction: column;
-    gap: clamp(2px, .8vmin, 8px);
-    padding: clamp(4px, 1.2vmin, 12px) clamp(8px, 2vw, 18px);
+    gap: clamp(2px, .7vmin, 7px);
+    padding: clamp(3px, 1vmin, 11px) clamp(8px, 2vw, 18px);
     border-radius: 12px;
   }
+  .dayHead { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; white-space: nowrap; }
+  .dayLeft { font-weight: 700; }
+  .dayRight { color: var(--soft); font-variant-numeric: tabular-nums; }
+  .dayRight b { color: var(--fg); font-size: 1.3em; font-weight: 700; }
+  .dayTrack { height: clamp(12px, 4.4vh, 56px); padding: 2px; border: 2px solid var(--edge); border-radius: 7px; }
+  .dayInner { height: 100%; background: var(--track); border-radius: 3px; overflow: hidden; }
+  .fill { width: 100%; height: 100%; background: var(--fg); }
+
+  /* Battery */
+  .power { display: flex; flex-direction: column; gap: clamp(2px, .8vmin, 8px); padding: clamp(4px, 1.2vmin, 12px) clamp(8px, 2vw, 18px); border-radius: 12px; }
   .head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; white-space: nowrap; }
   .name { font-weight: 700; }
   .when { min-width: 0; color: var(--soft); overflow: hidden; text-overflow: ellipsis; }
@@ -247,16 +262,14 @@
     display: grid;
     grid-template-columns: repeat(10, minmax(0, 1fr));
     gap: clamp(2px, .6vw, 5px);
-    height: clamp(14px, 7.5vh, 62px);
+    height: clamp(14px, 6vh, 62px);
     padding: 3px;
     border: 2px solid var(--edge);
     border-radius: 8px;
   }
   .cell { background: var(--track); border-radius: 3px; overflow: hidden; }
-  .fill { width: 100%; height: 100%; background: var(--fg); }
   .cap { width: 5px; height: 42%; background: var(--edge); border-radius: 0 3px 3px 0; }
   body.final .cell.live .fill, body.final #dayFill { animation: pulse 3s ease-in-out infinite; }
-  @keyframes pulse { 50% { opacity: .72; } }
   .days {
     display: grid;
     grid-template-columns: repeat(10, minmax(0, 1fr));
@@ -267,31 +280,9 @@
     text-align: center;
     white-space: nowrap;
   }
-  .days .exam { color: var(--ink); font-weight: 700; }
-
-  /* Today's block: the same 24 hours as the draining battery cell */
-  .daybar {
-    display: flex;
-    flex-direction: column;
-    gap: clamp(2px, .7vmin, 7px);
-    padding: clamp(3px, 1vmin, 11px) clamp(8px, 2vw, 18px);
-    background: var(--panel);
-    border-radius: 12px;
-  }
-  .dayHead { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; white-space: nowrap; }
-  .dayLeft { font-weight: 700; }
-  .dayRight { color: var(--soft); font-variant-numeric: tabular-nums; }
-  .dayRight b { color: var(--fg); font-size: 1.3em; font-weight: 700; }
-  .dayTrack {
-    height: clamp(12px, 5.2vh, 56px);
-    padding: 2px;
-    border: 2px solid var(--edge);
-    border-radius: 7px;
-  }
-  .dayInner { height: 100%; background: var(--track); border-radius: 3px; overflow: hidden; }
   .days .today-block { color: var(--fg); font-weight: 700; }
 
-  /* Facts */
+  /* Counters */
   .facts { display: flex; gap: var(--pad); white-space: nowrap; overflow: hidden; }
   .fact {
     flex: 1 1 auto;
@@ -299,41 +290,40 @@
     color: var(--soft);
     border-radius: 9px;
     text-align: center;
+    font-variant-numeric: tabular-nums;
   }
-  .fact b { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .fact b { color: var(--ink); font-weight: 700; }
 
   @media (prefers-reduced-motion: reduce) {
-    #glow, .clouds, .rain, #flash, .twinkle, .fill { animation: none !important; }
+    #glow, .clouds, .rain, #flash, .twinkle, .fill, .hourRead { animation: none !important; }
   }
 
   /* About 600x200: the essentials */
   @media (max-height: 279px) {
-    #arc text, .days, .long { display: none; }
+    #arc text, .days, .facts, .exam, .last { display: none; }
     .now { font-size: 1.35em; }
     .num { font-size: clamp(24px, min(9vw, 20vh), 56px); }
     .cells { height: clamp(10px, 6vh, 16px); padding: 2px; }
     .cap { height: 50%; }
-    .side { flex-direction: row; align-items: center; }
+    .side { gap: 3px; }
+    .line { font-size: 1em; }
     .power { padding-top: 2px; padding-bottom: 3px; }
-    .facts { display: none; }
     .daybar { flex-direction: row; align-items: center; gap: 8px; padding-top: 2px; padding-bottom: 2px; }
     .dayHead { display: contents; }
     .dayLeft { order: 0; }
     .dayTrack { order: 1; flex: 1; height: 11px; padding: 1px; }
     .dayRight { order: 2; }
     .dayRight b { font-size: 1em; }
-    #dayEnds { display: none; }
   }
   @media (max-width: 460px) {
-    .year, .since { display: none; }
-    .side .line { display: none; }
+    .year, .line, .last, #dayTime { display: none; }
   }
   @media (max-height: 179px) {
-    .head, .facts, .lab, .dayLeft { display: none; }
+    .head, .lab, .dayLeft, .line { display: none; }
     .now { font-size: 1.2em; }
   }
   @media (max-width: 340px) {
-    .today, .cond, #dayTime, .dayWord { display: none; }
+    .today, .cond, .dayWord, .hourRead { display: none; }
   }
 </style>
 </head>
@@ -343,8 +333,9 @@
   <div class="layer" id="glow"></div>
   <div class="layer stars" id="starsA"><div class="twinkle"></div></div>
   <div class="layer stars" id="starsB"><div class="twinkle"></div></div>
-  <div class="clouds" id="cloudsFar"></div>
-  <div class="clouds" id="cloudsNear"></div>
+  <div class="clouds" id="cloudFar"></div>
+  <div class="clouds" id="cloudMid"></div>
+  <div class="clouds" id="cloudNear"></div>
   <div class="rain" id="rainFar"></div>
   <div class="rain" id="rainNear"></div>
   <div class="layer" id="tide"></div>
@@ -356,16 +347,29 @@
   <header class="world">
     <svg id="arc" aria-hidden="true">
       <defs>
+        <linearGradient id="dayGrad" x1="0" x2="1" y1="0" y2="0">
+          <stop offset="0" stop-color="#8e6cff"></stop>
+          <stop offset=".1" stop-color="#ff7a2f"></stop>
+          <stop offset=".5" stop-color="#ffe066"></stop>
+          <stop offset=".9" stop-color="#ff7a2f"></stop>
+          <stop offset="1" stop-color="#8e6cff"></stop>
+        </linearGradient>
+        <linearGradient id="nightGrad" x1="0" x2="1" y1="0" y2="0">
+          <stop offset="0" stop-color="#8e6cff"></stop>
+          <stop offset=".5" stop-color="#9fb4ff"></stop>
+          <stop offset="1" stop-color="#8e6cff"></stop>
+        </linearGradient>
         <radialGradient id="haloDay"><stop offset="0" stop-color="#fff3b0" stop-opacity=".95"></stop><stop offset=".4" stop-color="#ffd60a" stop-opacity=".45"></stop><stop offset="1" stop-color="#ffb000" stop-opacity="0"></stop></radialGradient>
         <radialGradient id="haloNight"><stop offset="0" stop-color="#ffffff" stop-opacity=".7"></stop><stop offset=".45" stop-color="#cdd8ff" stop-opacity=".25"></stop><stop offset="1" stop-color="#cdd8ff" stop-opacity="0"></stop></radialGradient>
       </defs>
       <line class="hz" id="hz"></line>
-      <path class="under up"></path>
-      <path class="under down"></path>
-      <path class="base up"></path>
-      <path class="base down"></path>
-      <path class="past up" id="dayPast" pathLength="1"></path>
-      <path class="past down" id="nightPast" pathLength="1"></path>
+      <path class="shadow up"></path>
+      <path class="shadow down"></path>
+      <path class="track up" stroke="url(#dayGrad)"></path>
+      <path class="track down night" stroke="url(#nightGrad)"></path>
+      <path class="done up" id="dayPast" stroke="url(#dayGrad)" pathLength="1"></path>
+      <path class="done down" id="nightPast" stroke="url(#nightGrad)" pathLength="1"></path>
+      <g id="ticks"></g>
       <circle id="halo"></circle>
       <circle id="body"></circle>
       <text id="riseT"></text>
@@ -378,13 +382,13 @@
       </div>
       <div class="chip right" id="wxChip">
         <div class="cond" id="cond"></div>
-        <div class="sub" id="light"></div>
+        <div class="next" id="next"></div>
       </div>
     </div>
   </header>
 
   <div class="main">
-    <div class="digits" id="digits" role="timer" aria-label="Time left until the exam">
+    <div class="digits" id="digits" role="timer" aria-label="Time left until the 10-day block ends">
       <div class="tile"><span class="num" id="d"></span><span class="lab" id="dLab">days</span></div>
       <div class="tile"><span class="num" id="h"></span><span class="lab">hrs</span></div>
       <div class="tile"><span class="num" id="m"></span><span class="lab">min</span></div>
@@ -393,22 +397,32 @@
     <div class="finished" id="finished" hidden>done</div>
     <div class="side">
       <div class="line" id="line"></div>
-      <button id="sprint" type="button">Start 25</button>
+      <div class="exam" title="The exam starts 17 hours after the 10-day block ends">&#x1F393; <b>Thu 5:00pm</b> &middot; +17h</div>
+      <div class="hour">
+        <button id="play" type="button" aria-label="Start a 60-minute block">&#9654;</button>
+        <div class="hourTrack" role="img" aria-label="Minutes left in this hour"><div class="hourInner"><div class="hourFill" id="hourFill"></div></div></div>
+        <span class="hourRead" id="hourRead">60:00</span>
+      </div>
+      <div class="last" id="last" hidden>
+        <span id="lastText"></span>
+        <button class="mini" id="copy" type="button">&#x1F4CB; Copy</button>
+        <a href="https://app.notion.com/p/psyc2017-4120a8dbbff080ec8cc7d06142967a8f" target="_blank" rel="noopener">Notion &#8599;</a>
+      </div>
     </div>
   </div>
 
   <div class="daybar" id="daybar">
     <div class="dayHead">
-      <span class="dayLeft"><span id="dayName"></span><span id="dayEnds" class="when"></span></span>
-      <span class="dayRight"><b id="dayPct"></b><span class="dayWord"> left</span> <span id="dayTime"></span></span>
+      <span class="dayLeft">&#x1F4C5; <span id="dayName"></span></span>
+      <span class="dayRight"><b id="dayPct"></b><span class="dayWord"> of today left</span> <span id="dayTime"></span></span>
     </div>
     <div class="dayTrack" id="dayTrack" role="img"><div class="dayInner"><div class="fill" id="dayFill"></div></div></div>
   </div>
 
   <div class="power">
     <div class="head">
-      <span class="name" id="examName">PSYC2017 Final Exam</span>
-      <span class="when">Thu 19 Nov<span class="year"> 2026</span>, 5:00pm<span id="examWx"></span></span>
+      <span class="name">&#x1F50B; <span id="blockName">10-day block</span></span>
+      <span class="when">ends 12:00am Thu 19 Nov<span id="examWx"></span></span>
     </div>
     <div class="battery" id="battery" role="img">
       <div class="cells" id="cells"></div>
@@ -418,10 +432,9 @@
   </div>
 
   <div class="facts" id="facts">
-    <span class="fact"><b id="rises"></b> <span id="risesLab">sunrises</span></span>
-    <span class="fact"><b id="waking"></b> waking hrs</span>
-    <span class="fact since"><b id="gone"></b> gone<span class="long"> since you opened this</span></span>
-    <span class="fact"><b id="done"></b> <span id="doneLab">sprints</span> today</span>
+    <span class="fact" title="Sunrises before the line, and time to the next one">&#x2600;&#xFE0F; <b id="rises"></b> &middot; next <b id="riseIn"></b></span>
+    <span class="fact" title="Waking time left: time to the line minus 8 of every 24 hours">&#x23F3; <b id="waking"></b></span>
+    <span class="fact" title="Hours logged with the timer today">&#x23F1; <b id="logged"></b> today</span>
   </div>
 </div>
 
@@ -431,19 +444,19 @@
 (function () {
   "use strict";
 
-  // Sydney is on AEDT (UTC+11) for this whole countdown, so this is exact on any device.
+  // Sydney is on AEDT (UTC+11) for this whole countdown, so these are exact on any device.
+  var LINE = Date.parse("2026-11-19T00:00:00+11:00"); // the 10-day block ends here
   var EXAM = Date.parse("2026-11-19T17:00:00+11:00");
-  var OFFSET = 11 * 36e5;
   var LAT = -33.888, LNG = 151.187; // University of Sydney
   var SECOND = 1000, MINUTE = 6e4, HOUR = 36e5, DAY = 864e5;
-  var SPRINT = 25 * MINUTE;
+  var BLOCK = 60 * MINUTE;
   var WEATHER_EVERY = 30 * MINUTE;
-  var KEY = "exam-countdown-sprints";
+  var KEY = "exam-countdown-hours";
   var WEATHER_URL = "https://api.open-meteo.com/v1/forecast?latitude=-33.89&longitude=151.19" +
     "&current=temperature_2m,weather_code,cloud_cover&daily=weather_code,temperature_2m_max" +
     "&timezone=Australia%2FSydney&forecast_days=16";
 
-  // Preview links, e.g. ?wx=storm&at=2026-11-16T20:00 (time is Sydney time).
+  // Preview links, e.g. ?wx=storm&at=2026-11-16T20:00 (Sydney time).
   var params = new URLSearchParams(location.search);
   var previewAt = params.get("at") ? Date.parse(params.get("at") + "+11:00") : NaN;
   var SHIFT = isNaN(previewAt) ? 0 : previewAt - Date.now();
@@ -455,6 +468,14 @@
   function $(id) { return document.getElementById(id); }
   function clamp(x, a, b) { return Math.min(b, Math.max(a, x)); }
   function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function hms(ms) {
+    var s = Math.max(0, Math.ceil(ms / SECOND));
+    return Math.floor(s / 3600) + ":" + pad(Math.floor(s / 60) % 60) + ":" + pad(s % 60);
+  }
+  function ms2(ms) { // m:ss, used for the hour timer
+    var s = Math.ceil(Math.abs(ms) / SECOND);
+    return pad(Math.floor(s / 60)) + ":" + pad(s % 60);
+  }
 
   // Only touch the page when a value has really changed.
   var seen = {};
@@ -523,13 +544,14 @@
     return "#ffffff";
   }
 
-  var BLACK = "#08090b", BLOOD = "#7a0611";
-  var RAMP = [[10, "#2fd36f"], [7, "#9fd62a"], [5, "#ffd60a"], [3, "#ff8a1f"], [1, "#ff3b30"]];
+  var BLACK = "#08090b", BLOOD = "#7a0611", FLOOD_DAYS = 2;
+  // Days left to the line -> colour. Yellow at 6, orange at 4, red at 2, then the flood.
+  var RAMP = [[10, "#2fd36f"], [8, "#9fd62a"], [6, "#ffd60a"], [4, "#ff8a1f"], [2, "#ff3b30"]];
 
   function urgency(days) {
     if (days > 10) return { fg: "#4da3ff", tide: "#4da3ff", panel: BLACK, flood: 0 };
-    if (days <= 1) {
-      var t = 1 - Math.max(days, 0);
+    if (days <= FLOOD_DAYS) {
+      var t = 1 - Math.max(days, 0) / FLOOD_DAYS;
       return { fg: mix(RAMP[4][1], "#ffffff", t), tide: mix(RAMP[4][1], "#b3001b", t), panel: mix(BLACK, BLOOD, t), flood: t };
     }
     for (var i = 0; i < RAMP.length - 1; i++) {
@@ -544,8 +566,7 @@
 
   function paintUrgency(days) {
     var u = urgency(days);
-    var fg = legible(u.fg, u.panel, 4.5);
-    prop("--fg", fg);
+    prop("--fg", legible(u.fg, u.panel, 4.5));
     prop("--tide", u.tide);
     prop("--panel", u.panel);
     prop("--soft", legible(mix(u.panel, "#ffffff", 0.72), u.panel, 7));
@@ -553,7 +574,7 @@
     prop("--edge", legible(mix(u.panel, "#ffffff", 0.42), u.panel, 3));
     style("bleed", "opacity", u.flood.toFixed(3));
     style("tide", "opacity", (0.3 + 0.42 * (1 - Math.min(days, 10) / 10)).toFixed(3));
-    flag("final", days > 0 && days <= 1);
+    flag("final", days > 0 && days <= FLOOD_DAYS);
   }
 
   /* Sun position and rise/set, calculated here so the sky works offline. */
@@ -583,6 +604,31 @@
     var set = J2000 + a + 0.0053 * Math.sin(M) - 0.0069 * Math.sin(2 * L);
     return { rise: fromJulian(noon - (set - noon)), set: fromJulian(set) };
   }
+  // The moment between a and b when the sun crosses the given altitude.
+  function crossing(a, b, deg) {
+    for (var i = 0; i < 28; i++) {
+      var m = (a + b) / 2;
+      if ((altitude(m) - deg) * (altitude(a) - deg) <= 0) b = m; else a = m;
+    }
+    return (a + b) / 2;
+  }
+  // Golden hour runs from -4 to +6 degrees, morning and evening.
+  function dayEvents(ms) {
+    var t = sunTimes(ms);
+    return [
+      { at: crossing(t.rise - 3 * HOUR, t.rise, -4), key: "amGoldStart", label: "\u{1F305} Golden hour", tick: true },
+      { at: t.rise, key: "rise", label: "☀️ Sunrise" },
+      { at: crossing(t.rise, t.rise + 3 * HOUR, 6), key: "amGoldEnd", label: "Golden hour ends", tick: true },
+      { at: crossing(t.set - 3 * HOUR, t.set, 6), key: "pmGoldStart", label: "\u{1F307} Golden hour", tick: true },
+      { at: t.set, key: "set", label: "\u{1F307} Sunset" },
+      { at: crossing(t.set, t.set + 3 * HOUR, -4), key: "pmGoldEnd", label: "Golden hour ends", tick: true }
+    ];
+  }
+  function nextEvent(now) {
+    var list = dayEvents(now).concat(dayEvents(now + DAY));
+    for (var i = 0; i < list.length; i++) if (list[i].at > now) return list[i];
+    return list[list.length - 1];
+  }
 
   /* Sydney clock text */
   var clockFmt = new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", minute: "2-digit", hour12: true });
@@ -600,11 +646,8 @@
     var p = dateFmt.formatToParts(ms);
     return part(p, "weekday") + " " + part(p, "day") + " " + part(p, "month");
   }
+  function weekday(ms) { return part(dateFmt.formatToParts(ms), "weekday"); }
   function dayKey(ms) { return keyFmt.format(ms); }
-  function span(ms) {
-    var m = Math.max(1, Math.round(ms / MINUTE)), h = Math.floor(m / 60);
-    return h ? h + "h " + (m % 60) + "m" : m + "m";
-  }
 
   /* Weather */
   var weather = null;
@@ -654,6 +697,27 @@
     }).catch(function () { weather = null; minuteKey = null; tick(); });
   }
 
+  /* Cloud textures: fractal noise rendered once per layer, then slid by the compositor. */
+  function cloudMask(seed, fx, fy, gain, cut) {
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="512">' +
+      '<defs><filter id="f" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">' +
+      '<feTurbulence type="fractalNoise" baseFrequency="' + fx + ' ' + fy + '" numOctaves="4" seed="' + seed + '" stitchTiles="stitch"/>' +
+      '<feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  ' + gain + ' 0 0 0 ' + (-cut) + '"/>' +
+      '</filter><linearGradient id="g" x1="0" x2="0" y1="0" y2="1">' +
+      '<stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".18" stop-color="#fff"/>' +
+      '<stop offset=".7" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>' +
+      '<mask id="m"><rect width="1024" height="512" fill="url(#g)"/></mask></defs>' +
+      '<rect width="1024" height="512" filter="url(#f)" mask="url(#m)"/></svg>';
+    return 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")';
+  }
+  [["cloudFar", cloudMask(3, 0.0045, 0.009, 3.4, 1.55)],
+   ["cloudMid", cloudMask(7, 0.0032, 0.0075, 3.8, 1.75)],
+   ["cloudNear", cloudMask(11, 0.0024, 0.0062, 4.6, 2.25)]].forEach(function (c) {
+    var el = $(c[0]);
+    el.style.webkitMaskImage = c[1];
+    el.style.maskImage = c[1];
+  });
+
   /* The sky */
   var SKY = [
     [-18, "#060a2a", "#1a1550"],
@@ -679,7 +743,7 @@
     }
     var light = clamp((alt + 6) / 12, 0, 1);
     var low = clamp(1 - Math.abs(alt - 3) / 9, 0, 1); // sunrise and sunset glow
-    var d = weather ? weather.desc : { cloud: 0, rain: 0 };
+    var d = weather ? weather.desc : { cloud: 0.2, rain: 0 };
 
     // Overcast and rain stay blue-slate and colourful, never flat grey.
     var grey = Math.min(0.85, d.cloud * 0.7 + d.rain * 0.25);
@@ -687,8 +751,8 @@
     bot = mix(bot, mix("#1c2340", d.rain ? "#6b8bb4" : "#b4c4d8", light), grey);
     if (d.storm) { top = mix(top, "#1a1140", 0.65); bot = mix(bot, "#4a2a78", 0.6); }
 
-    // In the final day the whole sky is pulled towards red.
-    var flood = days > 0 && days <= 1 ? 1 - days : 0;
+    // In the last two days the whole sky is pulled towards red.
+    var flood = days > 0 && days <= FLOOD_DAYS ? 1 - days / FLOOD_DAYS : 0;
     if (flood) { top = mix(top, "#4a0010", flood * 0.6); bot = mix(bot, "#a00018", flood * 0.6); }
 
     style("sky", "background", "linear-gradient(" + top + ", " + bot + ")");
@@ -696,12 +760,15 @@
     style("starsA", "opacity", ((1 - light) * clear).toFixed(2));
     style("starsB", "opacity", ((1 - light) * clear).toFixed(2));
 
-    var cloudTint = mix(mix("#3b4372", "#ffffff", light), "#ffb48a", low * 0.75);
-    if (d.rain) cloudTint = mix(cloudTint, "#59657f", Math.min(0.8, d.rain));
-    if (d.storm) cloudTint = mix(cloudTint, "#2c2650", 0.7);
-    prop("--c", triple(cloudTint));
-    style("cloudsFar", "opacity", clamp(0.22 + d.cloud * 0.78, 0, 1).toFixed(2)); // always a little movement
-    style("cloudsNear", "opacity", (d.cloud >= 0.3 ? clamp(d.cloud, 0, 0.95) : 0).toFixed(2));
+    // Cloud tint: white at noon, peach at golden hour, slate at dusk, violet at night.
+    var tint = mix(mix("#3b3a78", "#ffffff", light), "#ffb48a", low * 0.8);
+    if (d.rain) tint = mix(tint, "#59657f", Math.min(0.8, d.rain));
+    if (d.storm) tint = mix(tint, "#2c2650", 0.7);
+    prop("--cloud", tint);
+    var c = d.cloud;
+    style("cloudFar", "opacity", clamp(0.35 + c * 0.6, 0, 0.95).toFixed(2)); // always some drift
+    style("cloudMid", "opacity", (c >= 0.2 ? clamp((c - 0.1) * 1.1, 0, 0.95) : 0).toFixed(2));
+    style("cloudNear", "opacity", (c >= 0.45 ? clamp((c - 0.35) * 1.4, 0, 0.95) : 0).toFixed(2));
     style("rainFar", "opacity", (d.rain ? 0.45 + d.rain * 0.45 : 0).toFixed(2));
     style("rainNear", "opacity", (d.rain >= 0.5 ? d.rain * 0.8 : 0).toFixed(2));
     flag("raining", d.rain > 0);
@@ -712,20 +779,28 @@
   function setAttrs(el, o) { for (var k in o) el.setAttribute(k, o[k]); }
   function each(sel, fn) { [].forEach.call(document.querySelectorAll(sel), fn); }
 
+  /* The sun's arch */
+  var arcGeom = null;
+  function pointOn(ms) {
+    var g = arcGeom, t = sunTimes(ms), isDay = ms >= t.rise && ms < t.set, start, end;
+    if (isDay) { start = t.rise; end = t.set; }
+    else if (ms < t.rise) { start = sunTimes(ms - DAY).set; end = t.rise; }
+    else { start = t.set; end = sunTimes(ms + DAY).rise; }
+    var f = clamp((ms - start) / (end - start), 0, 1);
+    if (isDay) return { x: g.cx - g.rx * Math.cos(Math.PI * f), y: g.hz - g.rise * Math.sin(Math.PI * f), f: f, day: true, start: start, end: end };
+    return { x: g.cx + g.rx * Math.cos(Math.PI * f), y: g.hz + g.sink * Math.sin(Math.PI * f), f: f, day: false, start: start, end: end };
+  }
   function paintArc(now, alt) {
     var svg = $("arc"), box = svg.getBoundingClientRect(), W = box.width, H = box.height;
     if (!W || !H) return;
-    var t = sunTimes(now), isDay = now >= t.rise && now < t.set, start, end;
-    if (isDay) { start = t.rise; end = t.set; }
-    else if (now < t.rise) { start = sunTimes(now - DAY).set; end = t.rise; }
-    else { start = t.set; end = sunTimes(now + DAY).rise; }
-    var f = clamp((now - start) / (end - start), 0, 1);
-
     var chip = Math.max($("timeChip").offsetHeight, $("wxChip").offsetHeight);
-    var sun = clamp(H * 0.13, 7, 34), sink = clamp(H * 0.14, 5, 32);
+    var sun = clamp(H * 0.12, 7, 30), sink = clamp(H * 0.12, 5, 28);
     var hz = Math.max(H * 0.42, H - chip - sink * 0.6 - 3);
-    var rise = Math.max(8, hz - sun - 3);
-    var L = clamp(W * 0.05, 8, 60), R = W - L, rx = (R - L) / 2, cx = W / 2;
+    var edge = clamp(W * 0.06, 8, 70), cx = W / 2;
+    var rise = Math.max(8, hz - sun - 6); // use the whole open sky
+    var rx = Math.min(cx - edge, Math.max(rise * 1.3, W * 0.32)); // an arch, not a flat ellipse
+    var L = cx - rx, R = cx + rx;
+    arcGeom = { cx: cx, rx: rx, hz: hz, rise: rise, sink: sink };
 
     svg.setAttribute("viewBox", "0 0 " + W + " " + H);
     setAttrs($("hz"), { x1: 0, y1: hz, x2: W, y2: hz });
@@ -734,64 +809,68 @@
     each("#arc .up", function (p) { p.setAttribute("d", up); });
     each("#arc .down", function (p) { p.setAttribute("d", down); });
 
-    var x, y;
-    if (isDay) { x = cx - rx * Math.cos(Math.PI * f); y = hz - rise * Math.sin(Math.PI * f); }
-    else { x = cx + rx * Math.cos(Math.PI * f); y = hz + sink * Math.sin(Math.PI * f); }
-    setAttrs($("body"), { cx: x.toFixed(1), cy: y.toFixed(1), r: sun.toFixed(1), fill: isDay ? "#ffd60a" : "#eef2ff" });
-    setAttrs($("halo"), { cx: x.toFixed(1), cy: y.toFixed(1), r: (sun * 3).toFixed(1), fill: isDay ? "url(#haloDay)" : "url(#haloNight)" });
-    $("dayPast").style.strokeDasharray = (isDay ? f.toFixed(4) : "0") + " 1";
-    $("nightPast").style.strokeDasharray = (isDay ? "0" : f.toFixed(4)) + " 1";
+    var p = pointOn(now);
+    setAttrs($("body"), { cx: p.x.toFixed(1), cy: p.y.toFixed(1), r: sun.toFixed(1), fill: p.day ? "#ffd60a" : "#eef2ff" });
+    setAttrs($("halo"), { cx: p.x.toFixed(1), cy: p.y.toFixed(1), r: (sun * 3).toFixed(1), fill: p.day ? "url(#haloDay)" : "url(#haloNight)" });
+    $("dayPast").style.strokeDasharray = (p.day ? p.f.toFixed(4) : "0") + " 1";
+    $("nightPast").style.strokeDasharray = (p.day ? "0" : p.f.toFixed(4)) + " 1";
 
-    var size = clamp(H * 0.1, 10, 16);
-    setAttrs($("riseT"), { x: L + 9, y: hz - 5, "font-size": size });
-    setAttrs($("setT"), { x: R - 9, y: hz - 5, "font-size": size });
-    text("riseT", clock(isDay ? t.rise : end));
-    text("setT", clock(isDay ? t.set : start));
-    var narrow = window.innerWidth <= 340;
-    text("light", isDay ? span(t.set - now) + (narrow ? " daylight" : " of daylight left") : "sunrise in " + span(end - now));
+    // Golden-hour marks for today, as short ticks across the arch.
+    var ticks = $("ticks"), html = "";
+    dayEvents(now).forEach(function (e) {
+      if (!e.tick) return;
+      var q = pointOn(e.at), nx = (q.x - cx) / rx, ny = (q.y - hz) / (q.day ? rise : sink), n = Math.hypot(nx, ny) || 1;
+      nx /= n; ny /= n;
+      var len = Math.max(4, sun * 0.45);
+      html += '<line class="tick" x1="' + (q.x - nx * len).toFixed(1) + '" y1="' + (q.y - ny * len).toFixed(1) +
+        '" x2="' + (q.x + nx * len).toFixed(1) + '" y2="' + (q.y + ny * len).toFixed(1) + '"/>';
+    });
+    if (seen.ticks !== html) { seen.ticks = html; ticks.innerHTML = html; }
+
+    var t = sunTimes(now), size = clamp(H * 0.1, 10, 16);
+    // Times sit just outside the arch's feet, clear of a low sun.
+    setAttrs($("riseT"), { x: L - 8, y: hz - 5, "font-size": size, "text-anchor": "end" });
+    setAttrs($("setT"), { x: R + 8, y: hz - 5, "font-size": size, "text-anchor": "start" });
+    text("riseT", clock(p.day ? t.rise : p.end));
+    text("setT", clock(p.day ? t.set : p.start));
 
     // A real pool of light in the sky, wherever the sun is.
-    var px = box.left + x, py = box.top + y, reach = Math.max(window.innerWidth, window.innerHeight);
+    var px = box.left + p.x, py = box.top + p.y, reach = Math.max(window.innerWidth, window.innerHeight);
     var warm = clamp(1 - alt / 22, 0, 1);
     var tint = mix("#fff0c0", "#ff8a3c", warm);
-    var glow = isDay
+    var glow = p.day
       ? "radial-gradient(circle " + Math.round(reach * 0.62) + "px at " + Math.round(px) + "px " + Math.round(py) + "px, rgba(" + triple(tint) + ", .8), transparent 72%)"
       : "radial-gradient(circle " + Math.round(reach * 0.3) + "px at " + Math.round(px) + "px " + Math.round(py) + "px, rgba(200, 212, 255, .28), transparent 72%)";
     style("glow", "background", glow);
   }
 
-  /* Time-blindness facts */
+  /* Counters */
   function sunrisesLeft(now) {
     var count = 0;
-    for (var ms = now - DAY; ms < EXAM + DAY; ms += DAY) {
+    for (var ms = now - DAY; ms < LINE + DAY; ms += DAY) {
       var r = sunTimes(ms).rise;
-      if (r > now && r < EXAM) count++;
+      if (r > now && r < LINE) count++;
     }
     return count;
   }
-  // Hours left outside the 11pm to 7am sleep window.
-  function wakingLeft(now) {
-    var total = Math.max(0, EXAM - now), asleep = 0;
-    var first = Math.floor((now + OFFSET) / DAY) - 1;
-    var last = Math.floor((EXAM + OFFSET) / DAY);
-    for (var d = first; d <= last; d++) {
-      var from = d * DAY + 23 * HOUR - OFFSET, to = from + 8 * HOUR;
-      asleep += Math.max(0, Math.min(to, EXAM) - Math.max(from, now));
+  function nextSunrise(now) {
+    for (var ms = now - DAY; ; ms += DAY) {
+      var r = sunTimes(ms).rise;
+      if (r > now) return r;
     }
-    return (total - asleep) / HOUR;
   }
-  var WORDS = ["Zero", "One", "Two", "Three"];
+  var WORDS = ["Zero", "One", "Two", "Three", "Four"];
   function stageLine(days, rises) {
-    if (days > 10) return "Full battery. It starts draining at 5pm Monday.";
+    if (days > 10) return "Full.";
     if (days <= 1 / 24) return "Final hour.";
-    if (rises === 0) return "It's today.";
-    if (days <= 3) return WORDS[Math.min(rises, 3)] + (rises === 1 ? " sunrise left." : " sunrises left.");
-    if (days <= 5) return "Half your battery is gone.";
-    if (days <= 8) return "Don't wait for a better day.";
-    return "The first blocks are going. Start today.";
+    if (rises === 0) return "Today.";
+    if (days <= 4) return WORDS[Math.min(rises, 4)] + (rises === 1 ? " sunrise." : " sunrises.");
+    if (days <= 6) return "Half gone.";
+    if (days <= 8) return "Don't wait.";
+    return "First block going.";
   }
 
-  /* Battery */
+  /* Battery: ten midnight-to-midnight blocks, Mon 9 on the right, Wed 18 on the left. */
   var cells = [], labels = [];
   for (var i = 0; i < 10; i++) {
     var cell = document.createElement("div");
@@ -802,10 +881,9 @@
     $("cells").appendChild(cell);
     cells.push({ cell: cell, fill: fill, w: null, live: false });
     var lab = document.createElement("div");
-    var p = dateFmt.formatToParts(EXAM - i * DAY);
-    lab.textContent = part(p, "weekday");
-    lab.title = dateText(EXAM - i * DAY);
-    if (i === 0) lab.className = "exam";
+    var noon = LINE - (i + 1) * DAY + 12 * HOUR;
+    lab.textContent = weekday(noon);
+    lab.title = dateText(noon);
     $("days").appendChild(lab);
     labels.push(lab);
   }
@@ -819,65 +897,83 @@
     }
   }
 
-  /* Today's bar: time left in the current 5pm-to-5pm block */
+  /* Today's bar: percent of today left, midnight to midnight */
   function paintDay(now, days) {
-    var ms = (EXAM - now) % DAY;
-    if (ms === 0) ms = DAY;
+    var ms = (LINE - now) % DAY;
+    if (ms <= 0) ms += DAY;
     var pct = ms / DAY * 100;
-    var block = Math.ceil(days) - 1; // 0 is the exam-day block; above 9 the battery hasn't started
+    var block = Math.ceil(days) - 1;
     if (seen.block !== block) {
       if (seen.block >= 0 && seen.block < 10) labels[seen.block].classList.remove("today-block");
       seen.block = block;
-      if (block > 9) {
-        text("dayName", "Before the battery starts");
-        text("dayEnds", " · 5pm today");
-      } else {
-        labels[block].classList.add("today-block");
-        text("dayName", block === 0 ? "Final block" : labels[block].textContent + " block");
-        text("dayEnds", block === 0 ? " · ends at the exam" : " · ends 5pm");
-      }
+      if (block >= 0 && block < 10) labels[block].classList.add("today-block");
+      text("dayName", dateText(now) + (block >= 0 && block < 10 ? " · block " + (10 - block) + " of 10" : ""));
     }
     style("dayFill", "width", pct.toFixed(3) + "%");
     text("dayPct", pct.toFixed(2) + "%");
-    var left = Math.ceil(ms / SECOND);
-    text("dayTime", pad(Math.floor(left / 3600)) + ":" + pad(Math.floor(left / 60) % 60) + ":" + pad(left % 60));
+    text("dayTime", hms(ms));
     var whole = Math.round(pct);
     if (seen.dayAria !== whole) {
       seen.dayAria = whole;
-      $("dayTrack").setAttribute("aria-label", whole + "% of the current 24-hour block left");
+      $("dayTrack").setAttribute("aria-label", whole + "% of today left");
     }
   }
 
-  /* Sprint */
-  var sprint = { day: "", count: 0, endAt: 0 };
+  /* Hourly timer: one tap starts 60 minutes, runs into overtime until stopped. */
+  var hour = { day: "", logged: 0, startAt: 0, last: null };
   try {
     var stored = JSON.parse(localStorage.getItem(KEY));
-    if (stored && typeof stored.count === "number" && !PREVIEW) sprint = stored;
+    if (stored && typeof stored.logged === "number" && !PREVIEW) hour = stored;
   } catch (e) {}
-  function saveSprint() {
+  function saveHour() {
     if (PREVIEW) return;
-    try { localStorage.setItem(KEY, JSON.stringify(sprint)); } catch (e) {}
+    try { localStorage.setItem(KEY, JSON.stringify(hour)); } catch (e) {}
   }
-  function syncSprint(now) {
-    var day = dayKey(now), changed = false;
-    if (sprint.day !== day) { sprint.day = day; sprint.count = 0; changed = true; }
-    if (sprint.endAt && now >= sprint.endAt) {
-      if (dayKey(sprint.endAt) === day) sprint.count++;
-      sprint.endAt = 0;
-      changed = true;
+  function logged(ms) {
+    var m = Math.round(ms / MINUTE);
+    return m >= 60 ? Math.floor(m / 60) + "h " + pad(m % 60) + "m" : m + "m";
+  }
+  $("play").addEventListener("click", function () {
+    var now = nowMs();
+    if (hour.startAt) {
+      var dur = now - hour.startAt;
+      hour.logged += dur;
+      hour.last = { start: hour.startAt, end: now };
+      hour.startAt = 0;
+    } else {
+      hour.startAt = now;
     }
-    if (changed) saveSprint();
-  }
-  $("sprint").addEventListener("click", function () {
-    sprint.endAt = sprint.endAt ? 0 : nowMs() + SPRINT;
-    saveSprint();
+    saveHour();
     tick();
   });
+  $("copy").addEventListener("click", function () {
+    var l = hour.last;
+    if (!l) return;
+    var line = dateText(l.start) + " " + clock(l.start) + "–" + clock(l.end) + " · " + logged(l.end - l.start) + " · PSYC2017";
+    var done = function () { text("copy", "✓ Copied"); setTimeout(function () { text("copy", "\u{1F4CB} Copy"); }, 1500); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(line).then(done, function () { window.prompt("Copy this line:", line); });
+    else window.prompt("Copy this line:", line);
+  });
+  function paintHour(now) {
+    var day = dayKey(now);
+    if (hour.day !== day) { hour.day = day; hour.logged = 0; saveHour(); }
+    var running = !!hour.startAt, left = running ? BLOCK - (now - hour.startAt) : BLOCK;
+    var over = running && left < 0;
+    style("hourFill", "width", (clamp(left / BLOCK, 0, 1) * 100).toFixed(2) + "%");
+    text("hourRead", (over ? "−" : "") + ms2(left));
+    text("play", running ? "■" : "▶");
+    $("play").setAttribute("aria-label", running ? "Stop and log this block" : "Start a 60-minute block");
+    flag("overtime", over);
+    var total = hour.logged + (running ? now - hour.startAt : 0);
+    text("logged", logged(total));
+    var l = hour.last;
+    $("last").hidden = !l || running;
+    if (l && !running) text("lastText", clock(l.start) + "–" + clock(l.end) + " · " + logged(l.end - l.start));
+  }
 
   /* Every second */
-  var loadedAt = nowMs();
-  var timer, minuteKey = null, lastAlt = null;
-  if (PREVIEW) $("examName").textContent = "PSYC2017 Final Exam (preview)";
+  var timer, minuteKey = null, lastAlt = null, nextEv = null, riseAt = 0, lastTick = 0;
+  if (PREVIEW) $("blockName").textContent = "10-day block (preview)";
 
   function paintMinute(now, days) {
     text("now", clock(now));
@@ -886,15 +982,9 @@
     var wx = weather;
     text("cond", wx ? wx.temp + "°" + (wx.desc.text ? " " + wx.desc.text : "") : "");
     $("cond").hidden = !wx;
-    text("examWx", wx && wx.exam ? " · " + wx.exam : "");
+    text("examWx", wx && wx.exam ? " · exam day " + wx.exam : "");
     paintArc(now, alt);
-    var rises = days > 0 ? sunrisesLeft(now) : 0;
-    text("rises", String(rises));
-    text("risesLab", rises === 1 ? "sunrise" : "sunrises");
-    var w = wakingLeft(now);
-    text("waking", w >= 1 ? String(Math.floor(w)) : "<1");
-    text("line", days > 0 ? stageLine(days, rises) : "");
-    $("battery").setAttribute("aria-label", clamp(days, 0, 10).toFixed(1) + " of 10 days left in the battery");
+    $("battery").setAttribute("aria-label", clamp(days, 0, 10).toFixed(1) + " of 10 days left in the block");
   }
 
   function tick() {
@@ -903,8 +993,8 @@
     var paused = document.hidden;
     flag("paused", paused);
 
-    var over = now >= EXAM;
-    var days = Math.max(0, EXAM - now) / DAY;
+    var over = now >= LINE;
+    var days = Math.max(0, LINE - now) / DAY;
     var key = Math.floor(now / MINUTE);
 
     if (now - lastFetch >= WEATHER_EVERY || lastFetch === 0) fetchWeather(now);
@@ -913,7 +1003,21 @@
       paintMinute(now, days);
     }
 
+    // Live countdowns to the next sky event and the next sunrise.
+    // Recompute when passed, or when the clock has jumped backwards.
+    var jumped = now < lastTick;
+    lastTick = now;
+    if (!nextEv || now >= nextEv.at || jumped) nextEv = nextEvent(now);
+    text("next", nextEv.label + " in " + hms(nextEv.at - now));
+    if (now >= riseAt || jumped) riseAt = nextSunrise(now);
+    text("riseIn", hms(riseAt - now));
+    // Sunrise count drops at the exact second of sunrise.
+    var rises = days > 0 ? sunrisesLeft(now) : 0;
+    text("rises", String(rises));
+    text("line", days > 0 ? stageLine(days, rises) : "");
+
     paintBattery(days);
+    paintHour(now);
     if (over) {
       prop("--fg", "#f2f3f5");
       prop("--tide", "#4da3ff");
@@ -926,37 +1030,25 @@
       flag("final", false);
       $("digits").hidden = true;
       $("finished").hidden = false;
-      $("sprint").hidden = true;
-      $("facts").hidden = true;
       $("daybar").hidden = true;
+      $("facts").hidden = true;
       if (seen.block >= 0 && seen.block < 10) labels[seen.block].classList.remove("today-block");
       seen.block = -1;
-      return; // nothing left to count
+      text("finished", now < EXAM ? "line crossed · exam in " + hms(EXAM - now) : "done");
+      timer = setTimeout(tick, paused ? MINUTE : SECOND - (now % SECOND) + 20);
+      return;
     }
     paintUrgency(days);
     paintDay(now, days);
 
-    var left = Math.ceil((EXAM - now) / SECOND); // never reads zero while time remains
+    var left = Math.ceil((LINE - now) / SECOND); // never reads zero while time remains
     var d = Math.floor(left / 86400);
     text("d", String(d));
     text("dLab", d === 1 ? "day" : "days");
     text("h", pad(Math.floor(left / 3600) % 24));
     text("m", pad(Math.floor(left / 60) % 60));
     text("s", pad(left % 60));
-
-    var since = Math.floor((now - loadedAt) / SECOND);
-    var hrs = Math.floor(since / 3600);
-    text("gone", (hrs ? hrs + ":" + pad(Math.floor(since / 60) % 60) : Math.floor(since / 60)) + ":" + pad(since % 60));
-
-    syncSprint(now);
-    text("done", String(sprint.count));
-    text("doneLab", sprint.count === 1 ? "sprint" : "sprints");
-    if (sprint.endAt) {
-      var rest = Math.ceil((sprint.endAt - now) / SECOND);
-      text("sprint", pad(Math.floor(rest / 60)) + ":" + pad(rest % 60) + " · stop");
-    } else {
-      text("sprint", "Start 25");
-    }
+    text("waking", hms((LINE - now) * 2 / 3)); // 8 of every 24 hours are sleep
 
     // Hidden pages still paint, slowly, so an embed that reports "hidden" is never blank.
     timer = setTimeout(tick, paused ? MINUTE : SECOND - (now % SECOND) + 20);
@@ -967,7 +1059,7 @@
   window.addEventListener("pageshow", tick);
   window.addEventListener("focus", tick);
   window.addEventListener("resize", function () { minuteKey = null; tick(); });
-  // Keep the sun path fitted to the open sky once the tiles have laid out.
+  // Keep the arch fitted to the open sky once the tiles have laid out.
   if (window.ResizeObserver) {
     new ResizeObserver(function () {
       if (lastAlt !== null) paintArc(nowMs(), lastAlt);
