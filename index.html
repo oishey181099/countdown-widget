@@ -9,18 +9,20 @@
   :root {
     color-scheme: dark;
     --fg: #4da3ff;
+    --tide: #4da3ff;
     --panel: #08090b;
     --ink: #f2f3f5;
     --soft: #c4c7cd;
     --track: #2b2e36;
     --edge: #5a5f6b;
-    --pad: clamp(5px, 1.6vmin, 14px);
+    --c: 255, 255, 255;
+    --pad: clamp(5px, 1.5vmin, 14px);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
   [hidden] { display: none !important; }
 
-  html, body { height: 100%; background: #08090b; }
+  html, body { height: 100%; background: #0a1a3a; }
 
   body {
     overflow: hidden;
@@ -32,115 +34,185 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* The sky: what is really happening outside */
-  .layer { position: fixed; inset: 0; pointer-events: none; }
-  #sky { background: linear-gradient(#1c5fae, #3f8fd6); }
-  #stars {
-    opacity: 0;
-    background-image:
-      radial-gradient(1px 1px at 12px 18px, #fff, transparent),
-      radial-gradient(1px 1px at 74px 9px, #fff, transparent),
-      radial-gradient(1.5px 1.5px at 131px 41px, #fff, transparent),
-      radial-gradient(1px 1px at 38px 66px, #fff, transparent),
-      radial-gradient(1px 1px at 105px 83px, #fff, transparent),
-      radial-gradient(1.5px 1.5px at 168px 72px, #fff, transparent);
-    background-size: 190px 100px;
-  }
-  #clouds {
-    opacity: 0;
-    background:
-      radial-gradient(ellipse 34% 26% at 18% 16%, rgba(255,255,255,.55), transparent 72%),
-      radial-gradient(ellipse 42% 22% at 58% 8%, rgba(255,255,255,.5), transparent 72%),
-      radial-gradient(ellipse 30% 24% at 92% 24%, rgba(255,255,255,.5), transparent 72%),
-      radial-gradient(ellipse 40% 20% at 38% 42%, rgba(255,255,255,.3), transparent 72%);
-  }
-  #rain {
-    inset: -120px 0 0 0;
-    opacity: 0;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='120'%3E%3Cg stroke='%23dfe9f5' stroke-width='1.2' stroke-linecap='round'%3E%3Cpath d='M14 6l-4 16M52 38l-4 16M78 12l-4 16M30 72l-4 16M66 88l-4 16M6 96l-4 16'/%3E%3C/g%3E%3C/svg%3E");
-    will-change: transform;
-  }
-  body.raining #rain { animation: fall 1.5s linear infinite; }
-  body.paused #rain { animation-play-state: paused; }
-  @keyframes fall { to { transform: translate3d(0, 120px, 0); } }
+  /* ---------- The living sky ---------- */
+  #scene { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
+  .layer { position: absolute; inset: 0; }
 
+  #sky { background: linear-gradient(#0a78e8, #62cdff); }
+  #glow { animation: breathe 7s ease-in-out infinite; }
+  @keyframes breathe { 50% { opacity: .72; } }
+
+  .stars { opacity: 0; background-size: 190px 100px; }
+  #starsA {
+    background-image:
+      radial-gradient(1.2px 1.2px at 12px 18px, #fff, transparent),
+      radial-gradient(1px 1px at 74px 9px, #fff, transparent),
+      radial-gradient(1.8px 1.8px at 131px 41px, #fff, transparent);
+  }
+  #starsB {
+    background-size: 230px 130px;
+    background-image:
+      radial-gradient(1.6px 1.6px at 38px 66px, #dfe8ff, transparent),
+      radial-gradient(1px 1px at 105px 83px, #fff, transparent),
+      radial-gradient(2px 2px at 188px 32px, #ffeccc, transparent);
+  }
+  .twinkle { position: absolute; inset: 0; background: inherit; background-size: inherit; }
+  #starsA .twinkle { animation: blink 4.5s ease-in-out infinite; }
+  #starsB .twinkle { animation: blink 7s ease-in-out infinite reverse; }
+  @keyframes blink { 50% { opacity: .15; } }
+
+  .clouds {
+    position: absolute;
+    left: 0;
+    width: 200%;
+    opacity: 0;
+    background-repeat: repeat-x;
+    background-size: 50% 100%;
+    will-change: transform;
+    animation: drift 150s linear infinite;
+  }
+  #cloudsFar {
+    top: 0;
+    height: 58%;
+    background-image:
+      radial-gradient(ellipse 13% 24% at 14% 34%, rgba(var(--c), .85) 35%, transparent 72%),
+      radial-gradient(ellipse 9% 20% at 22% 26%, rgba(var(--c), .8) 35%, transparent 72%),
+      radial-gradient(ellipse 15% 22% at 56% 22%, rgba(var(--c), .8) 35%, transparent 72%),
+      radial-gradient(ellipse 10% 17% at 66% 30%, rgba(var(--c), .75) 35%, transparent 72%),
+      radial-gradient(ellipse 12% 20% at 88% 44%, rgba(var(--c), .7) 35%, transparent 72%);
+  }
+  #cloudsNear {
+    top: 12%;
+    height: 72%;
+    animation-duration: 85s;
+    background-image:
+      radial-gradient(ellipse 17% 25% at 8% 52%, rgba(var(--c), .95) 40%, transparent 72%),
+      radial-gradient(ellipse 12% 22% at 18% 40%, rgba(var(--c), .95) 40%, transparent 72%),
+      radial-gradient(ellipse 14% 20% at 28% 55%, rgba(var(--c), .9) 40%, transparent 72%),
+      radial-gradient(ellipse 18% 26% at 62% 44%, rgba(var(--c), .95) 40%, transparent 72%),
+      radial-gradient(ellipse 12% 22% at 74% 34%, rgba(var(--c), .9) 40%, transparent 72%),
+      radial-gradient(ellipse 13% 20% at 84% 56%, rgba(var(--c), .85) 40%, transparent 72%);
+  }
+  @keyframes drift { to { transform: translate3d(-50%, 0, 0); } }
+
+  .rain { position: absolute; left: 0; right: 0; bottom: 0; opacity: 0; will-change: transform; }
+  #rainFar {
+    top: -120px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='120'%3E%3Cg stroke='%23cfe2ff' stroke-width='1.4' stroke-linecap='round'%3E%3Cpath d='M14 6l-2 18M52 38l-2 18M78 12l-2 18M30 72l-2 18M66 88l-2 18M6 96l-2 18'/%3E%3C/g%3E%3C/svg%3E");
+  }
+  #rainNear {
+    top: -160px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='160'%3E%3Cg stroke='%23ffffff' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M22 10l-3 30M84 50l-3 30M48 104l-3 30M108 118l-3 30'/%3E%3C/g%3E%3C/svg%3E");
+  }
+  body.raining #rainFar { animation: fallFar 1.05s linear infinite; }
+  body.raining #rainNear { animation: fallNear .7s linear infinite; }
+  @keyframes fallFar { to { transform: translate3d(0, 120px, 0); } }
+  @keyframes fallNear { to { transform: translate3d(0, 160px, 0); } }
+
+  #flash { background: #e9e4ff; opacity: 0; }
+  body.storm #flash { animation: lightning 9s linear infinite; }
+  @keyframes lightning {
+    0%, 71% { opacity: 0; } 72% { opacity: .6; } 73% { opacity: .08; }
+    75% { opacity: .5; } 78%, 100% { opacity: 0; }
+  }
+
+  #tide { background: linear-gradient(transparent 38%, var(--tide)); }
   #bleed {
     opacity: 0;
-    background: radial-gradient(ellipse at center, transparent 42%, rgba(150, 0, 20, .9) 100%);
+    background: radial-gradient(ellipse at center, transparent 30%, rgba(170, 0, 24, .95) 100%);
   }
+  body.paused * { animation-play-state: paused !important; }
 
+  /* ---------- Layout ---------- */
   .app {
     position: relative;
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto auto auto;
     gap: var(--pad);
     height: 100%;
     padding: var(--pad);
   }
 
-  /* Top strip: now, in Sydney */
-  .world {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-    align-items: center;
-    gap: clamp(6px, 2vw, 18px);
-    padding: clamp(3px, 1vmin, 8px) clamp(8px, 2vw, 16px);
-    color: #fff;
-    background: rgba(8, 9, 11, .64);
-    border-radius: 12px;
+  /* Open sky: sun path, time, weather */
+  .world { position: relative; min-height: 0; }
+  #arc { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  #arc path { fill: none; stroke-linecap: round; }
+  #arc .under { stroke: rgba(8, 9, 11, .35); stroke-width: 6; }
+  #arc .base { stroke: rgba(255, 255, 255, .6); stroke-width: 2.4; }
+  #arc .past { stroke: #fff; stroke-width: 3.4; stroke-dasharray: 0 1; }
+  #arc .hz { stroke: rgba(255, 255, 255, .75); stroke-width: 1.2; }
+  #arc text {
+    fill: #fff;
+    font-weight: 700;
+    paint-order: stroke;
+    stroke: rgba(8, 9, 11, .7);
+    stroke-width: 3.5px;
   }
-  .now { font-size: 2em; font-weight: 700; line-height: 1.05; font-variant-numeric: tabular-nums; }
+  .corners {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 8px;
+  }
+  .chip {
+    min-width: 0;
+    padding: clamp(2px, .8vmin, 7px) clamp(7px, 1.8vw, 14px);
+    color: #fff;
+    background: rgba(8, 9, 11, .72);
+    border-radius: 11px;
+  }
+  .now { font-size: 1.75em; font-weight: 700; line-height: 1.05; font-variant-numeric: tabular-nums; }
   .today, .sub, .cond { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .right { text-align: right; min-width: 0; }
-  .cond { font-weight: 600; }
-  #arc { display: block; height: clamp(32px, 20vh, 120px); width: auto; aspect-ratio: 220 / 72; }
-  #arc path { fill: none; stroke-width: 2.4; stroke-linecap: round; }
-  #arc .base { stroke: rgba(255,255,255,.42); }
-  #arc .past { stroke: #fff; stroke-dasharray: 0 1; }
-  #arc .hz { stroke: rgba(255,255,255,.55); stroke-width: 1; }
-  #arc text { fill: #fff; font-size: 11px; font-weight: 600; }
+  .right { text-align: right; }
+  .cond { font-weight: 700; }
 
-  /* The exam */
-  .panel {
+  /* Timer tiles */
+  .main { display: flex; align-items: stretch; gap: var(--pad); }
+  .digits { display: flex; gap: var(--pad); }
+  .tile, .side, .power, .fact { background: var(--panel); }
+  .tile {
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    gap: clamp(2px, 1vmin, 10px);
-    min-height: 0;
-    padding: clamp(6px, 1.8vmin, 18px) clamp(9px, 2.4vw, 22px);
-    background: var(--panel);
-    border-radius: 14px;
+    align-items: center;
+    padding: clamp(3px, 1vmin, 12px) clamp(5px, 1.6vw, 22px);
+    border: 2px solid var(--fg);
+    border-radius: 12px;
   }
-  .head {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 12px;
-    white-space: nowrap;
-  }
-  .name { font-weight: 700; }
-  .when { min-width: 0; color: var(--soft); overflow: hidden; text-overflow: ellipsis; }
-
-  .main { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-  .digits { display: flex; gap: clamp(8px, 2.6vw, 34px); }
-  .unit { display: flex; flex-direction: column; align-items: flex-start; }
   .num {
     min-width: 2ch;
     color: var(--fg);
-    font-size: clamp(26px, min(10.5vw, 24vh), 200px);
+    font-size: clamp(26px, min(10vw, 22vh), 190px);
     font-weight: 700;
     font-variant-numeric: tabular-nums;
     line-height: 1;
+    text-align: center;
   }
   .lab { color: var(--soft); font-size: .86em; }
-  .finished { color: var(--fg); font-size: clamp(24px, min(9vw, 18vh), 110px); font-weight: 700; line-height: 1; }
-
+  .finished {
+    display: flex;
+    align-items: center;
+    padding: 0 .4em;
+    color: var(--fg);
+    background: var(--panel);
+    border-radius: 12px;
+    font-size: clamp(24px, min(9vw, 18vh), 110px);
+    font-weight: 700;
+    line-height: 1.2;
+  }
   .side {
+    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: clamp(3px, 1vmin, 10px);
+    justify-content: center;
+    gap: clamp(3px, 1vmin, 12px);
     min-width: 0;
+    padding: clamp(3px, 1vmin, 12px) clamp(6px, 1.6vw, 18px);
+    border-radius: 12px;
     text-align: right;
   }
   .line { color: var(--fg); font-size: 1.14em; font-weight: 700; }
@@ -158,13 +230,24 @@
   }
   button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
+  /* Battery */
+  .power {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(2px, .8vmin, 8px);
+    padding: clamp(4px, 1.2vmin, 12px) clamp(8px, 2vw, 18px);
+    border-radius: 12px;
+  }
+  .head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; white-space: nowrap; }
+  .name { font-weight: 700; }
+  .when { min-width: 0; color: var(--soft); overflow: hidden; text-overflow: ellipsis; }
   .battery { display: flex; align-items: center; gap: 3px; }
   .cells {
     flex: 1;
     display: grid;
     grid-template-columns: repeat(10, minmax(0, 1fr));
     gap: clamp(2px, .6vw, 5px);
-    height: clamp(14px, 9vh, 56px);
+    height: clamp(14px, 7.5vh, 62px);
     padding: 3px;
     border: 2px solid var(--edge);
     border-radius: 8px;
@@ -174,13 +257,11 @@
   .cap { width: 5px; height: 42%; background: var(--edge); border-radius: 0 3px 3px 0; }
   body.final .cell.live .fill { animation: pulse 3s ease-in-out infinite; }
   @keyframes pulse { 50% { opacity: .72; } }
-
   .days {
     display: grid;
     grid-template-columns: repeat(10, minmax(0, 1fr));
     gap: clamp(2px, .6vw, 5px);
     padding: 0 13px 0 5px;
-    margin-top: -1px;
     color: var(--soft);
     font-size: .8em;
     text-align: center;
@@ -188,29 +269,30 @@
   }
   .days .exam { color: var(--ink); font-weight: 700; }
 
-  .facts {
-    display: flex;
-    flex-wrap: nowrap;
-    justify-content: space-between;
-    gap: 2px 14px;
+  /* Facts */
+  .facts { display: flex; gap: var(--pad); white-space: nowrap; overflow: hidden; }
+  .fact {
+    flex: 1 1 auto;
+    padding: clamp(1px, .5vmin, 5px) clamp(6px, 1.4vw, 12px);
     color: var(--soft);
-    white-space: nowrap;
-    overflow: hidden;
+    border-radius: 9px;
+    text-align: center;
   }
-  .facts b { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .fact b { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
 
   @media (prefers-reduced-motion: reduce) {
-    #rain, .fill { animation: none !important; }
+    #glow, .clouds, .rain, #flash, .twinkle, .fill { animation: none !important; }
   }
 
   /* About 600x200: the essentials */
   @media (max-height: 279px) {
     #arc text, .days, .long { display: none; }
-    .now { font-size: 1.6em; }
-    .num { font-size: clamp(26px, min(10vw, 23vh), 60px); }
-    .cells { height: clamp(11px, 7vh, 18px); padding: 2px; }
+    .now { font-size: 1.35em; }
+    .num { font-size: clamp(24px, min(9vw, 20vh), 56px); }
+    .cells { height: clamp(10px, 6vh, 16px); padding: 2px; }
     .cap { height: 50%; }
     .side { flex-direction: row; align-items: center; }
+    .power { padding-top: 2px; padding-bottom: 3px; }
   }
   @media (max-width: 460px) {
     .year, .since { display: none; }
@@ -218,7 +300,7 @@
   }
   @media (max-height: 179px) {
     .head, .facts, .lab { display: none; }
-    .now { font-size: 1.4em; }
+    .now { font-size: 1.2em; }
   }
   @media (max-width: 340px) {
     .today, .cond { display: none; }
@@ -226,69 +308,83 @@
 </style>
 </head>
 <body>
-<div class="layer" id="sky"></div>
-<div class="layer" id="stars"></div>
-<div class="layer" id="clouds"></div>
-<div class="layer" id="rain"></div>
-<div class="layer" id="bleed"></div>
+<div id="scene" aria-hidden="true">
+  <div class="layer" id="sky"></div>
+  <div class="layer" id="glow"></div>
+  <div class="layer stars" id="starsA"><div class="twinkle"></div></div>
+  <div class="layer stars" id="starsB"><div class="twinkle"></div></div>
+  <div class="clouds" id="cloudsFar"></div>
+  <div class="clouds" id="cloudsNear"></div>
+  <div class="rain" id="rainFar"></div>
+  <div class="rain" id="rainNear"></div>
+  <div class="layer" id="tide"></div>
+  <div class="layer" id="bleed"></div>
+  <div class="layer" id="flash"></div>
+</div>
 
 <div class="app">
   <header class="world">
-    <div>
-      <div class="now" id="now"></div>
-      <div class="today" id="today"></div>
-    </div>
-    <svg id="arc" viewBox="0 0 220 72" aria-hidden="true">
-      <line class="hz" x1="0" y1="48" x2="220" y2="48"></line>
-      <path class="base" d="M10 48A100 38 0 0 1 210 48"></path>
-      <path class="base" d="M210 48A100 16 0 0 1 10 48"></path>
-      <path class="past" id="dayPast" pathLength="1" d="M10 48A100 38 0 0 1 210 48"></path>
-      <path class="past" id="nightPast" pathLength="1" d="M210 48A100 16 0 0 1 10 48"></path>
-      <circle id="body" r="6.5" cx="10" cy="48"></circle>
-      <text id="riseT" x="4" y="69"></text>
-      <text id="setT" x="216" y="69" text-anchor="end"></text>
+    <svg id="arc" aria-hidden="true">
+      <defs>
+        <radialGradient id="haloDay"><stop offset="0" stop-color="#fff3b0" stop-opacity=".95"></stop><stop offset=".4" stop-color="#ffd60a" stop-opacity=".45"></stop><stop offset="1" stop-color="#ffb000" stop-opacity="0"></stop></radialGradient>
+        <radialGradient id="haloNight"><stop offset="0" stop-color="#ffffff" stop-opacity=".7"></stop><stop offset=".45" stop-color="#cdd8ff" stop-opacity=".25"></stop><stop offset="1" stop-color="#cdd8ff" stop-opacity="0"></stop></radialGradient>
+      </defs>
+      <line class="hz" id="hz"></line>
+      <path class="under up"></path>
+      <path class="under down"></path>
+      <path class="base up"></path>
+      <path class="base down"></path>
+      <path class="past up" id="dayPast" pathLength="1"></path>
+      <path class="past down" id="nightPast" pathLength="1"></path>
+      <circle id="halo"></circle>
+      <circle id="body"></circle>
+      <text id="riseT"></text>
+      <text id="setT" text-anchor="end"></text>
     </svg>
-    <div class="right">
-      <div class="cond" id="cond"></div>
-      <div class="sub" id="light"></div>
+    <div class="corners">
+      <div class="chip" id="timeChip">
+        <div class="now" id="now"></div>
+        <div class="today" id="today"></div>
+      </div>
+      <div class="chip right" id="wxChip">
+        <div class="cond" id="cond"></div>
+        <div class="sub" id="light"></div>
+      </div>
     </div>
   </header>
 
-  <main class="panel">
+  <div class="main">
+    <div class="digits" id="digits" role="timer" aria-label="Time left until the exam">
+      <div class="tile"><span class="num" id="d"></span><span class="lab" id="dLab">days</span></div>
+      <div class="tile"><span class="num" id="h"></span><span class="lab">hrs</span></div>
+      <div class="tile"><span class="num" id="m"></span><span class="lab">min</span></div>
+      <div class="tile"><span class="num" id="s"></span><span class="lab">sec</span></div>
+    </div>
+    <div class="finished" id="finished" hidden>done</div>
+    <div class="side">
+      <div class="line" id="line"></div>
+      <button id="sprint" type="button">Start 25</button>
+    </div>
+  </div>
+
+  <div class="power">
     <div class="head">
-      <span class="name">PSYC2017 Final Exam</span>
+      <span class="name" id="examName">PSYC2017 Final Exam</span>
       <span class="when">Thu 19 Nov<span class="year"> 2026</span>, 5:00pm<span id="examWx"></span></span>
     </div>
-
-    <div class="main">
-      <div class="digits" id="digits" role="timer" aria-label="Time left until the exam">
-        <div class="unit"><span class="num" id="d"></span><span class="lab" id="dLab">days</span></div>
-        <div class="unit"><span class="num" id="h"></span><span class="lab">hrs</span></div>
-        <div class="unit"><span class="num" id="m"></span><span class="lab">min</span></div>
-        <div class="unit"><span class="num" id="s"></span><span class="lab">sec</span></div>
-      </div>
-      <div class="finished" id="finished" hidden>done</div>
-      <div class="side">
-        <div class="line" id="line"></div>
-        <button id="sprint" type="button">Start 25</button>
-      </div>
+    <div class="battery" id="battery" role="img">
+      <div class="cells" id="cells"></div>
+      <div class="cap"></div>
     </div>
+    <div class="days" id="days" aria-hidden="true"></div>
+  </div>
 
-    <div>
-      <div class="battery" id="battery" role="img">
-        <div class="cells" id="cells"></div>
-        <div class="cap"></div>
-      </div>
-      <div class="days" id="days" aria-hidden="true"></div>
-    </div>
-
-    <div class="facts" id="facts">
-      <span><b id="rises"></b> <span id="risesLab">sunrises</span></span>
-      <span><b id="waking"></b> waking hrs</span>
-      <span class="since"><b id="gone"></b> gone<span class="long"> since you opened this</span></span>
-      <span><b id="done"></b> <span id="doneLab">sprints</span> today</span>
-    </div>
-  </main>
+  <div class="facts" id="facts">
+    <span class="fact"><b id="rises"></b> <span id="risesLab">sunrises</span></span>
+    <span class="fact"><b id="waking"></b> waking hrs</span>
+    <span class="fact since"><b id="gone"></b> gone<span class="long"> since you opened this</span></span>
+    <span class="fact"><b id="done"></b> <span id="doneLab">sprints</span> today</span>
+  </div>
 </div>
 
 <noscript>PSYC2017 Final Exam: Thu 19 Nov 2026, 5:00pm Sydney time.</noscript>
@@ -309,6 +405,14 @@
     "&current=temperature_2m,weather_code,cloud_cover&daily=weather_code,temperature_2m_max" +
     "&timezone=Australia%2FSydney&forecast_days=16";
 
+  // Preview links, e.g. ?wx=storm&at=2026-11-16T20:00 (time is Sydney time).
+  var params = new URLSearchParams(location.search);
+  var previewAt = params.get("at") ? Date.parse(params.get("at") + "+11:00") : NaN;
+  var SHIFT = isNaN(previewAt) ? 0 : previewAt - Date.now();
+  var PREVIEW_WX = { clear: 0, partly: 2, cloudy: 3, fog: 45, rain: 63, storm: 95 }[params.get("wx")];
+  var PREVIEW = SHIFT !== 0 || PREVIEW_WX !== undefined;
+  function nowMs() { return Date.now() + SHIFT; }
+
   var root = document.documentElement;
   function $(id) { return document.getElementById(id); }
   function clamp(x, a, b) { return Math.min(b, Math.max(a, x)); }
@@ -325,6 +429,9 @@
   function style(id, key, value) {
     var k = id + "." + key;
     if (seen[k] !== value) { seen[k] = value; $(id).style[key] = value; }
+  }
+  function flag(name, on) {
+    if (seen["class." + name] !== on) { seen["class." + name] = on; document.body.classList.toggle(name, on); }
   }
 
   /* Colour: blended in OKLab so the green-yellow-red path stays even. */
@@ -360,6 +467,10 @@
     var x = toLab(rgb(a)), y = toLab(rgb(b));
     return fromLab([x[0] + (y[0] - x[0]) * t, x[1] + (y[1] - x[1]) * t, x[2] + (y[2] - x[2]) * t]);
   }
+  function triple(hex) {
+    var n = parseInt(hex.slice(1), 16);
+    return (n >> 16 & 255) + ", " + (n >> 8 & 255) + ", " + (n & 255);
+  }
   function lum(hex) { var c = rgb(hex); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; }
   function contrast(a, b) {
     var x = lum(a), y = lum(b);
@@ -378,31 +489,33 @@
   var RAMP = [[10, "#2fd36f"], [7, "#9fd62a"], [5, "#ffd60a"], [3, "#ff8a1f"], [1, "#ff3b30"]];
 
   function urgency(days) {
-    if (days > 10) return { fg: "#4da3ff", panel: BLACK, flood: 0 };
+    if (days > 10) return { fg: "#4da3ff", tide: "#4da3ff", panel: BLACK, flood: 0 };
     if (days <= 1) {
       var t = 1 - Math.max(days, 0);
-      return { fg: mix(RAMP[4][1], "#ffffff", t), panel: mix(BLACK, BLOOD, t), flood: t };
+      return { fg: mix(RAMP[4][1], "#ffffff", t), tide: mix(RAMP[4][1], "#b3001b", t), panel: mix(BLACK, BLOOD, t), flood: t };
     }
     for (var i = 0; i < RAMP.length - 1; i++) {
       if (days <= RAMP[i][0] && days >= RAMP[i + 1][0]) {
         var f = (RAMP[i][0] - days) / (RAMP[i][0] - RAMP[i + 1][0]);
-        return { fg: mix(RAMP[i][1], RAMP[i + 1][1], f), panel: BLACK, flood: 0 };
+        var c = mix(RAMP[i][1], RAMP[i + 1][1], f);
+        return { fg: c, tide: c, panel: BLACK, flood: 0 };
       }
     }
-    return { fg: RAMP[4][1], panel: BLACK, flood: 0 };
+    return { fg: RAMP[4][1], tide: RAMP[4][1], panel: BLACK, flood: 0 };
   }
 
   function paintUrgency(days) {
     var u = urgency(days);
     var fg = legible(u.fg, u.panel, 4.5);
     prop("--fg", fg);
+    prop("--tide", u.tide);
     prop("--panel", u.panel);
     prop("--soft", legible(mix(u.panel, "#ffffff", 0.72), u.panel, 7));
     prop("--track", mix(u.panel, "#ffffff", 0.16));
     prop("--edge", legible(mix(u.panel, "#ffffff", 0.42), u.panel, 3));
     style("bleed", "opacity", u.flood.toFixed(3));
-    var final = days > 0 && days <= 1;
-    if (seen.final !== final) { seen.final = final; document.body.classList.toggle("final", final); }
+    style("tide", "opacity", (0.3 + 0.42 * (1 - Math.min(days, 10) / 10)).toFixed(3));
+    flag("final", days > 0 && days <= 1);
   }
 
   /* Sun position and rise/set, calculated here so the sky works offline. */
@@ -478,6 +591,11 @@
   }
   function fetchWeather(now) {
     lastFetch = now;
+    if (PREVIEW_WX !== undefined) {
+      weather = { temp: 18, desc: describe(PREVIEW_WX), exam: "" };
+      minuteKey = null;
+      return;
+    }
     if (!window.fetch) return;
     fetch(WEATHER_URL).then(function (r) {
       if (!r.ok) throw new Error("weather");
@@ -500,18 +618,18 @@
 
   /* The sky */
   var SKY = [
-    [-18, "#050816", "#0b1430"],
-    [-6, "#131b47", "#3b2a6b"],
-    [-0.8, "#2b3a78", "#c8553d"],
-    [6, "#2c66a8", "#d98a4b"],
-    [20, "#1c5fae", "#3f8fd6"],
-    [60, "#1657a8", "#3a8ad8"]
+    [-18, "#060a2a", "#1a1550"],
+    [-6, "#1b1464", "#7b2a8f"],
+    [-0.8, "#3a2c8f", "#ff6a3d"],
+    [3, "#4b5fd1", "#ffb04a"],
+    [10, "#1b7fe0", "#7fd4ff"],
+    [30, "#0a78e8", "#62cdff"],
+    [60, "#0068e0", "#4fc3ff"]
   ];
-  function paintSky(now) {
-    var alt = altitude(now), a = SKY[0], b = SKY[SKY.length - 1], top, bot;
-    if (alt <= a[0]) { top = a[1]; bot = a[2]; }
-    else if (alt >= b[0]) { top = b[1]; bot = b[2]; }
-    else {
+  function paintSky(now, days) {
+    var alt = altitude(now), a = SKY[0], b = SKY[SKY.length - 1], top = a[1], bot = a[2];
+    if (alt >= b[0]) { top = b[1]; bot = b[2]; }
+    else if (alt > a[0]) {
       for (var i = 0; i < SKY.length - 1; i++) {
         if (alt >= SKY[i][0] && alt <= SKY[i + 1][0]) {
           var f = (alt - SKY[i][0]) / (SKY[i + 1][0] - SKY[i][0]);
@@ -522,37 +640,86 @@
       }
     }
     var light = clamp((alt + 6) / 12, 0, 1);
+    var low = clamp(1 - Math.abs(alt - 3) / 9, 0, 1); // sunrise and sunset glow
     var d = weather ? weather.desc : { cloud: 0, rain: 0 };
-    var grey = Math.min(0.9, d.cloud * 0.75 + d.rain * 0.25);
-    top = mix(top, mix("#0b0e14", "#46515e", light), grey);
-    bot = mix(bot, mix("#12151c", "#66727f", light), grey);
-    if (d.storm) { top = mix(top, "#0a0c12", 0.45); bot = mix(bot, "#0a0c12", 0.45); }
+
+    // Overcast and rain stay blue-slate and colourful, never flat grey.
+    var grey = Math.min(0.85, d.cloud * 0.7 + d.rain * 0.25);
+    top = mix(top, mix("#10162e", d.rain ? "#34507e" : "#5d7596", light), grey);
+    bot = mix(bot, mix("#1c2340", d.rain ? "#6b8bb4" : "#b4c4d8", light), grey);
+    if (d.storm) { top = mix(top, "#1a1140", 0.65); bot = mix(bot, "#4a2a78", 0.6); }
+
+    // In the final day the whole sky is pulled towards red.
+    var flood = days > 0 && days <= 1 ? 1 - days : 0;
+    if (flood) { top = mix(top, "#4a0010", flood * 0.6); bot = mix(bot, "#a00018", flood * 0.6); }
+
     style("sky", "background", "linear-gradient(" + top + ", " + bot + ")");
-    style("stars", "opacity", ((1 - light) * (1 - d.cloud)).toFixed(2));
-    style("clouds", "opacity", (d.cloud * (0.35 + 0.65 * light)).toFixed(2));
-    style("rain", "opacity", (d.rain * 0.6).toFixed(2));
-    var raining = d.rain > 0;
-    if (seen.raining !== raining) { seen.raining = raining; document.body.classList.toggle("raining", raining); }
+    var clear = 1 - d.cloud;
+    style("starsA", "opacity", ((1 - light) * clear).toFixed(2));
+    style("starsB", "opacity", ((1 - light) * clear).toFixed(2));
+
+    var cloudTint = mix(mix("#3b4372", "#ffffff", light), "#ffb48a", low * 0.75);
+    if (d.rain) cloudTint = mix(cloudTint, "#59657f", Math.min(0.8, d.rain));
+    if (d.storm) cloudTint = mix(cloudTint, "#2c2650", 0.7);
+    prop("--c", triple(cloudTint));
+    style("cloudsFar", "opacity", clamp(0.22 + d.cloud * 0.78, 0, 1).toFixed(2)); // always a little movement
+    style("cloudsNear", "opacity", (d.cloud >= 0.3 ? clamp(d.cloud, 0, 0.95) : 0).toFixed(2));
+    style("rainFar", "opacity", (d.rain ? 0.45 + d.rain * 0.45 : 0).toFixed(2));
+    style("rainNear", "opacity", (d.rain >= 0.5 ? d.rain * 0.8 : 0).toFixed(2));
+    flag("raining", d.rain > 0);
+    flag("storm", !!d.storm);
+    return alt;
   }
 
-  function paintArc(now) {
+  function setAttrs(el, o) { for (var k in o) el.setAttribute(k, o[k]); }
+  function each(sel, fn) { [].forEach.call(document.querySelectorAll(sel), fn); }
+
+  function paintArc(now, alt) {
+    var svg = $("arc"), box = svg.getBoundingClientRect(), W = box.width, H = box.height;
+    if (!W || !H) return;
     var t = sunTimes(now), isDay = now >= t.rise && now < t.set, start, end;
     if (isDay) { start = t.rise; end = t.set; }
     else if (now < t.rise) { start = sunTimes(now - DAY).set; end = t.rise; }
     else { start = t.set; end = sunTimes(now + DAY).rise; }
-    var f = clamp((now - start) / (end - start), 0, 1), x, y;
-    if (isDay) { x = 110 - 100 * Math.cos(Math.PI * f); y = 48 - 38 * Math.sin(Math.PI * f); }
-    else { x = 110 + 100 * Math.cos(Math.PI * f); y = 48 + 16 * Math.sin(Math.PI * f); }
-    var body = $("body");
-    body.setAttribute("cx", x.toFixed(1));
-    body.setAttribute("cy", y.toFixed(1));
-    body.setAttribute("fill", isDay ? "#ffd60a" : "#e8ecf5");
+    var f = clamp((now - start) / (end - start), 0, 1);
+
+    var chip = Math.max($("timeChip").offsetHeight, $("wxChip").offsetHeight);
+    var sun = clamp(H * 0.13, 7, 34), sink = clamp(H * 0.14, 5, 32);
+    var hz = Math.max(H * 0.42, H - chip - sink * 0.6 - 3);
+    var rise = Math.max(8, hz - sun - 3);
+    var L = clamp(W * 0.05, 8, 60), R = W - L, rx = (R - L) / 2, cx = W / 2;
+
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    setAttrs($("hz"), { x1: 0, y1: hz, x2: W, y2: hz });
+    var up = "M" + L + " " + hz + "A" + rx + " " + rise + " 0 0 1 " + R + " " + hz;
+    var down = "M" + R + " " + hz + "A" + rx + " " + sink + " 0 0 1 " + L + " " + hz;
+    each("#arc .up", function (p) { p.setAttribute("d", up); });
+    each("#arc .down", function (p) { p.setAttribute("d", down); });
+
+    var x, y;
+    if (isDay) { x = cx - rx * Math.cos(Math.PI * f); y = hz - rise * Math.sin(Math.PI * f); }
+    else { x = cx + rx * Math.cos(Math.PI * f); y = hz + sink * Math.sin(Math.PI * f); }
+    setAttrs($("body"), { cx: x.toFixed(1), cy: y.toFixed(1), r: sun.toFixed(1), fill: isDay ? "#ffd60a" : "#eef2ff" });
+    setAttrs($("halo"), { cx: x.toFixed(1), cy: y.toFixed(1), r: (sun * 3).toFixed(1), fill: isDay ? "url(#haloDay)" : "url(#haloNight)" });
     $("dayPast").style.strokeDasharray = (isDay ? f.toFixed(4) : "0") + " 1";
     $("nightPast").style.strokeDasharray = (isDay ? "0" : f.toFixed(4)) + " 1";
+
+    var size = clamp(H * 0.1, 10, 16);
+    setAttrs($("riseT"), { x: L + 9, y: hz - 5, "font-size": size });
+    setAttrs($("setT"), { x: R - 9, y: hz - 5, "font-size": size });
     text("riseT", clock(isDay ? t.rise : end));
     text("setT", clock(isDay ? t.set : start));
     var narrow = window.innerWidth <= 340;
     text("light", isDay ? span(t.set - now) + (narrow ? " daylight" : " of daylight left") : "sunrise in " + span(end - now));
+
+    // A real pool of light in the sky, wherever the sun is.
+    var px = box.left + x, py = box.top + y, reach = Math.max(window.innerWidth, window.innerHeight);
+    var warm = clamp(1 - alt / 22, 0, 1);
+    var tint = mix("#fff0c0", "#ff8a3c", warm);
+    var glow = isDay
+      ? "radial-gradient(circle " + Math.round(reach * 0.62) + "px at " + Math.round(px) + "px " + Math.round(py) + "px, rgba(" + triple(tint) + ", .8), transparent 72%)"
+      : "radial-gradient(circle " + Math.round(reach * 0.3) + "px at " + Math.round(px) + "px " + Math.round(py) + "px, rgba(200, 212, 255, .28), transparent 72%)";
+    style("glow", "background", glow);
   }
 
   /* Time-blindness facts */
@@ -587,7 +754,7 @@
   }
 
   /* Battery */
-  var cells = [], labels = [];
+  var cells = [];
   for (var i = 0; i < 10; i++) {
     var cell = document.createElement("div");
     cell.className = "cell";
@@ -602,7 +769,6 @@
     lab.title = dateText(EXAM - i * DAY);
     if (i === 0) lab.className = "exam";
     $("days").appendChild(lab);
-    labels.push(lab);
   }
   function paintBattery(days) {
     for (var i = 0; i < 10; i++) {
@@ -618,9 +784,10 @@
   var sprint = { day: "", count: 0, endAt: 0 };
   try {
     var stored = JSON.parse(localStorage.getItem(KEY));
-    if (stored && typeof stored.count === "number") sprint = stored;
+    if (stored && typeof stored.count === "number" && !PREVIEW) sprint = stored;
   } catch (e) {}
   function saveSprint() {
+    if (PREVIEW) return;
     try { localStorage.setItem(KEY, JSON.stringify(sprint)); } catch (e) {}
   }
   function syncSprint(now) {
@@ -634,60 +801,61 @@
     if (changed) saveSprint();
   }
   $("sprint").addEventListener("click", function () {
-    sprint.endAt = sprint.endAt ? 0 : Date.now() + SPRINT;
+    sprint.endAt = sprint.endAt ? 0 : nowMs() + SPRINT;
     saveSprint();
     tick();
   });
 
   /* Every second */
-  var loadedAt = Date.now();
-  var timer, minuteKey = null;
+  var loadedAt = nowMs();
+  var timer, minuteKey = null, lastAlt = null;
+  if (PREVIEW) $("examName").textContent = "PSYC2017 Final Exam (preview)";
 
   function paintMinute(now, days) {
     text("now", clock(now));
     text("today", dateText(now));
-    paintSky(now);
-    paintArc(now);
-    var cond = $("cond"), wx = weather;
-    var line = wx ? wx.temp + "°" + (wx.desc.text ? " " + wx.desc.text : "") : "";
-    text("cond", line);
-    cond.hidden = !wx;
+    var alt = lastAlt = paintSky(now, days);
+    var wx = weather;
+    text("cond", wx ? wx.temp + "°" + (wx.desc.text ? " " + wx.desc.text : "") : "");
+    $("cond").hidden = !wx;
     text("examWx", wx && wx.exam ? " · " + wx.exam : "");
+    paintArc(now, alt);
     var rises = days > 0 ? sunrisesLeft(now) : 0;
     text("rises", String(rises));
     text("risesLab", rises === 1 ? "sunrise" : "sunrises");
     var w = wakingLeft(now);
     text("waking", w >= 1 ? String(Math.floor(w)) : "<1");
     text("line", days > 0 ? stageLine(days, rises) : "");
-    var left = clamp(days, 0, 10).toFixed(1);
-    $("battery").setAttribute("aria-label", left + " of 10 days left in the battery");
+    $("battery").setAttribute("aria-label", clamp(days, 0, 10).toFixed(1) + " of 10 days left in the battery");
   }
 
   function tick() {
     clearTimeout(timer);
-    var now = Date.now();
+    var now = nowMs();
     var paused = document.hidden;
-    if (seen.paused !== paused) { seen.paused = paused; document.body.classList.toggle("paused", paused); }
+    flag("paused", paused);
 
     var over = now >= EXAM;
     var days = Math.max(0, EXAM - now) / DAY;
     var key = Math.floor(now / MINUTE);
 
+    if (now - lastFetch >= WEATHER_EVERY || lastFetch === 0) fetchWeather(now);
     if (key !== minuteKey) {
       minuteKey = key;
       paintMinute(now, days);
     }
-    if (now - lastFetch >= WEATHER_EVERY || lastFetch === 0) fetchWeather(now);
 
     paintBattery(days);
     if (over) {
       prop("--fg", "#f2f3f5");
+      prop("--tide", "#4da3ff");
       prop("--panel", BLACK);
       prop("--soft", "#c4c7cd");
       prop("--track", "#2b2e36");
       prop("--edge", "#5a5f6b");
       style("bleed", "opacity", "0");
-      if (seen.final !== false) { seen.final = false; document.body.classList.remove("final"); }
+      style("tide", "opacity", "0.2");
+      flag("final", false);
       $("digits").hidden = true;
       $("finished").hidden = false;
       $("sprint").hidden = true;
@@ -726,6 +894,13 @@
   document.addEventListener("visibilitychange", tick);
   window.addEventListener("pageshow", tick);
   window.addEventListener("focus", tick);
+  window.addEventListener("resize", function () { minuteKey = null; tick(); });
+  // Keep the sun path fitted to the open sky once the tiles have laid out.
+  if (window.ResizeObserver) {
+    new ResizeObserver(function () {
+      if (lastAlt !== null) paintArc(nowMs(), lastAlt);
+    }).observe(document.querySelector(".world"));
+  }
 
   tick();
 })();
