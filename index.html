@@ -127,7 +127,7 @@
   .app {
     position: relative;
     display: grid;
-    grid-template-rows: minmax(0, 1fr) auto auto auto;
+    grid-template-rows: minmax(0, 1fr) auto auto auto auto;
     gap: var(--pad);
     height: 100%;
     padding: var(--pad);
@@ -255,7 +255,7 @@
   .cell { background: var(--track); border-radius: 3px; overflow: hidden; }
   .fill { width: 100%; height: 100%; background: var(--fg); }
   .cap { width: 5px; height: 42%; background: var(--edge); border-radius: 0 3px 3px 0; }
-  body.final .cell.live .fill { animation: pulse 3s ease-in-out infinite; }
+  body.final .cell.live .fill, body.final #dayFill { animation: pulse 3s ease-in-out infinite; }
   @keyframes pulse { 50% { opacity: .72; } }
   .days {
     display: grid;
@@ -268,6 +268,28 @@
     white-space: nowrap;
   }
   .days .exam { color: var(--ink); font-weight: 700; }
+
+  /* Today's block: the same 24 hours as the draining battery cell */
+  .daybar {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(2px, .7vmin, 7px);
+    padding: clamp(3px, 1vmin, 11px) clamp(8px, 2vw, 18px);
+    background: var(--panel);
+    border-radius: 12px;
+  }
+  .dayHead { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; white-space: nowrap; }
+  .dayLeft { font-weight: 700; }
+  .dayRight { color: var(--soft); font-variant-numeric: tabular-nums; }
+  .dayRight b { color: var(--fg); font-size: 1.3em; font-weight: 700; }
+  .dayTrack {
+    height: clamp(12px, 5.2vh, 56px);
+    padding: 2px;
+    border: 2px solid var(--edge);
+    border-radius: 7px;
+  }
+  .dayInner { height: 100%; background: var(--track); border-radius: 3px; overflow: hidden; }
+  .days .today-block { color: var(--fg); font-weight: 700; }
 
   /* Facts */
   .facts { display: flex; gap: var(--pad); white-space: nowrap; overflow: hidden; }
@@ -293,17 +315,25 @@
     .cap { height: 50%; }
     .side { flex-direction: row; align-items: center; }
     .power { padding-top: 2px; padding-bottom: 3px; }
+    .facts { display: none; }
+    .daybar { flex-direction: row; align-items: center; gap: 8px; padding-top: 2px; padding-bottom: 2px; }
+    .dayHead { display: contents; }
+    .dayLeft { order: 0; }
+    .dayTrack { order: 1; flex: 1; height: 11px; padding: 1px; }
+    .dayRight { order: 2; }
+    .dayRight b { font-size: 1em; }
+    #dayEnds { display: none; }
   }
   @media (max-width: 460px) {
     .year, .since { display: none; }
     .side .line { display: none; }
   }
   @media (max-height: 179px) {
-    .head, .facts, .lab { display: none; }
+    .head, .facts, .lab, .dayLeft { display: none; }
     .now { font-size: 1.2em; }
   }
   @media (max-width: 340px) {
-    .today, .cond { display: none; }
+    .today, .cond, #dayTime, .dayWord { display: none; }
   }
 </style>
 </head>
@@ -365,6 +395,14 @@
       <div class="line" id="line"></div>
       <button id="sprint" type="button">Start 25</button>
     </div>
+  </div>
+
+  <div class="daybar" id="daybar">
+    <div class="dayHead">
+      <span class="dayLeft"><span id="dayName"></span><span id="dayEnds" class="when"></span></span>
+      <span class="dayRight"><b id="dayPct"></b><span class="dayWord"> left</span> <span id="dayTime"></span></span>
+    </div>
+    <div class="dayTrack" id="dayTrack" role="img"><div class="dayInner"><div class="fill" id="dayFill"></div></div></div>
   </div>
 
   <div class="power">
@@ -754,7 +792,7 @@
   }
 
   /* Battery */
-  var cells = [];
+  var cells = [], labels = [];
   for (var i = 0; i < 10; i++) {
     var cell = document.createElement("div");
     cell.className = "cell";
@@ -769,6 +807,7 @@
     lab.title = dateText(EXAM - i * DAY);
     if (i === 0) lab.className = "exam";
     $("days").appendChild(lab);
+    labels.push(lab);
   }
   function paintBattery(days) {
     for (var i = 0; i < 10; i++) {
@@ -777,6 +816,35 @@
       if (c.w !== w) { c.w = w; c.fill.style.width = w; }
       var live = level > 0 && level < 1;
       if (c.live !== live) { c.live = live; c.cell.classList.toggle("live", live); }
+    }
+  }
+
+  /* Today's bar: time left in the current 5pm-to-5pm block */
+  function paintDay(now, days) {
+    var ms = (EXAM - now) % DAY;
+    if (ms === 0) ms = DAY;
+    var pct = ms / DAY * 100;
+    var block = Math.ceil(days) - 1; // 0 is the exam-day block; above 9 the battery hasn't started
+    if (seen.block !== block) {
+      if (seen.block >= 0 && seen.block < 10) labels[seen.block].classList.remove("today-block");
+      seen.block = block;
+      if (block > 9) {
+        text("dayName", "Before the battery starts");
+        text("dayEnds", " · 5pm today");
+      } else {
+        labels[block].classList.add("today-block");
+        text("dayName", block === 0 ? "Final block" : labels[block].textContent + " block");
+        text("dayEnds", block === 0 ? " · ends at the exam" : " · ends 5pm");
+      }
+    }
+    style("dayFill", "width", pct.toFixed(3) + "%");
+    text("dayPct", pct.toFixed(2) + "%");
+    var left = Math.ceil(ms / SECOND);
+    text("dayTime", pad(Math.floor(left / 3600)) + ":" + pad(Math.floor(left / 60) % 60) + ":" + pad(left % 60));
+    var whole = Math.round(pct);
+    if (seen.dayAria !== whole) {
+      seen.dayAria = whole;
+      $("dayTrack").setAttribute("aria-label", whole + "% of the current 24-hour block left");
     }
   }
 
@@ -860,9 +928,13 @@
       $("finished").hidden = false;
       $("sprint").hidden = true;
       $("facts").hidden = true;
+      $("daybar").hidden = true;
+      if (seen.block >= 0 && seen.block < 10) labels[seen.block].classList.remove("today-block");
+      seen.block = -1;
       return; // nothing left to count
     }
     paintUrgency(days);
+    paintDay(now, days);
 
     var left = Math.ceil((EXAM - now) / SECOND); // never reads zero while time remains
     var d = Math.floor(left / 86400);
