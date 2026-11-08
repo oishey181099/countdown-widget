@@ -4,202 +4,726 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Deadline Countdown</title>
+<title>Exam Countdown</title>
 <style>
   :root {
-    color-scheme: light;
-    --bg: #faf7f2;
-    --ink: #3d3a34;
-    --soft: #6f6a60;
-    --line: #e7e1d6;
-    --amber: #a8741f;
-    --gutter: clamp(14px, 4vw, 28px);
+    color-scheme: dark;
+    --fg: #4da3ff;
+    --panel: #08090b;
+    --ink: #f2f3f5;
+    --soft: #c4c7cd;
+    --track: #2b2e36;
+    --edge: #5a5f6b;
+    --pad: clamp(5px, 1.6vmin, 14px);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
 
-  html, body { height: 100%; background: var(--bg); }
+  html, body { height: 100%; background: #08090b; }
 
   body {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: clamp(8px, 5vh, 20px) var(--gutter);
+    overflow: hidden;
     color: var(--ink);
     font-family: ui-rounded, "SF Pro Rounded", "Hiragino Maru Gothic ProN",
       "Arial Rounded MT Bold", "Nunito", "Varela Round", system-ui, sans-serif;
-    font-size: clamp(12px, 2.5vw, 15px);
-    line-height: 1.3;
-    overflow: hidden;
+    font-size: clamp(11px, min(2.2vw, 4vh), 20px);
+    line-height: 1.25;
     -webkit-font-smoothing: antialiased;
   }
 
-  main { width: 100%; max-width: 760px; margin: 0 auto; }
+  /* The sky: what is really happening outside */
+  .layer { position: fixed; inset: 0; pointer-events: none; }
+  #sky { background: linear-gradient(#1c5fae, #3f8fd6); }
+  #stars {
+    opacity: 0;
+    background-image:
+      radial-gradient(1px 1px at 12px 18px, #fff, transparent),
+      radial-gradient(1px 1px at 74px 9px, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 131px 41px, #fff, transparent),
+      radial-gradient(1px 1px at 38px 66px, #fff, transparent),
+      radial-gradient(1px 1px at 105px 83px, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 168px 72px, #fff, transparent);
+    background-size: 190px 100px;
+  }
+  #clouds {
+    opacity: 0;
+    background:
+      radial-gradient(ellipse 34% 26% at 18% 16%, rgba(255,255,255,.55), transparent 72%),
+      radial-gradient(ellipse 42% 22% at 58% 8%, rgba(255,255,255,.5), transparent 72%),
+      radial-gradient(ellipse 30% 24% at 92% 24%, rgba(255,255,255,.5), transparent 72%),
+      radial-gradient(ellipse 40% 20% at 38% 42%, rgba(255,255,255,.3), transparent 72%);
+  }
+  #rain {
+    inset: -120px 0 0 0;
+    opacity: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='120'%3E%3Cg stroke='%23dfe9f5' stroke-width='1.2' stroke-linecap='round'%3E%3Cpath d='M14 6l-4 16M52 38l-4 16M78 12l-4 16M30 72l-4 16M66 88l-4 16M6 96l-4 16'/%3E%3C/g%3E%3C/svg%3E");
+    will-change: transform;
+  }
+  body.raining #rain { animation: fall 1.5s linear infinite; }
+  body.paused #rain { animation-play-state: paused; }
+  @keyframes fall { to { transform: translate3d(0, 120px, 0); } }
 
+  #bleed {
+    opacity: 0;
+    background: radial-gradient(ellipse at center, transparent 42%, rgba(150, 0, 20, .9) 100%);
+  }
+
+  .app {
+    position: relative;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: var(--pad);
+    height: 100%;
+    padding: var(--pad);
+  }
+
+  /* Top strip: now, in Sydney */
+  .world {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: clamp(6px, 2vw, 18px);
+    padding: clamp(3px, 1vmin, 8px) clamp(8px, 2vw, 16px);
+    color: #fff;
+    background: rgba(8, 9, 11, .64);
+    border-radius: 12px;
+  }
+  .now { font-size: 2em; font-weight: 700; line-height: 1.05; font-variant-numeric: tabular-nums; }
+  .today, .sub, .cond { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .right { text-align: right; min-width: 0; }
+  .cond { font-weight: 600; }
+  #arc { display: block; height: clamp(32px, 20vh, 120px); width: auto; aspect-ratio: 220 / 72; }
+  #arc path { fill: none; stroke-width: 2.4; stroke-linecap: round; }
+  #arc .base { stroke: rgba(255,255,255,.42); }
+  #arc .past { stroke: #fff; stroke-dasharray: 0 1; }
+  #arc .hz { stroke: rgba(255,255,255,.55); stroke-width: 1; }
+  #arc text { fill: #fff; font-size: 11px; font-weight: 600; }
+
+  /* The exam */
+  .panel {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: clamp(2px, 1vmin, 10px);
+    min-height: 0;
+    padding: clamp(6px, 1.8vmin, 18px) clamp(9px, 2.4vw, 22px);
+    background: var(--panel);
+    border-radius: 14px;
+  }
   .head {
     display: flex;
-    flex-wrap: wrap;
     justify-content: space-between;
     align-items: baseline;
-    gap: 0 12px;
+    gap: 12px;
+    white-space: nowrap;
   }
+  .name { font-weight: 700; }
+  .when { min-width: 0; color: var(--soft); overflow: hidden; text-overflow: ellipsis; }
 
-  .name { font-weight: 600; }
-  .when { color: var(--soft); }
-
-  .clock {
-    display: flex;
-    gap: clamp(16px, 6vw, 44px);
-    margin-top: clamp(2px, 2vh, 8px);
-  }
-
-  .unit { display: flex; flex-direction: column; }
-
+  .main { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .digits { display: flex; gap: clamp(8px, 2.6vw, 34px); }
+  .unit { display: flex; flex-direction: column; align-items: flex-start; }
   .num {
-    color: var(--amber);
-    font-size: clamp(30px, min(14vw, 36vh), 112px);
-    font-weight: 600;
+    min-width: 2ch;
+    color: var(--fg);
+    font-size: clamp(26px, min(10.5vw, 24vh), 200px);
+    font-weight: 700;
     font-variant-numeric: tabular-nums;
     line-height: 1;
-    min-width: 2ch; /* columns stay put when a value drops to one digit */
   }
+  .lab { color: var(--soft); font-size: .86em; }
+  .finished { color: var(--fg); font-size: clamp(24px, min(9vw, 18vh), 110px); font-weight: 700; line-height: 1; }
 
-  .lab { color: var(--soft); font-size: 0.86em; }
-
-  .quiet {
-    margin-top: clamp(4px, 3vh, 10px);
-    color: var(--soft);
-    font-size: clamp(16px, min(5vw, 12vh), 26px);
-  }
-
-  .other {
+  .side {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: clamp(3px, 1vmin, 10px);
+    min-width: 0;
+    text-align: right;
+  }
+  .line { color: var(--fg); font-size: 1.14em; font-weight: 700; }
+  button {
+    padding: .32em .9em;
+    color: var(--panel);
+    background: var(--fg);
+    border: 0;
+    border-radius: 999px;
+    font: inherit;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+  .battery { display: flex; align-items: center; gap: 3px; }
+  .cells {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+    gap: clamp(2px, .6vw, 5px);
+    height: clamp(14px, 9vh, 56px);
+    padding: 3px;
+    border: 2px solid var(--edge);
+    border-radius: 8px;
+  }
+  .cell { background: var(--track); border-radius: 3px; overflow: hidden; }
+  .fill { width: 100%; height: 100%; background: var(--fg); }
+  .cap { width: 5px; height: 42%; background: var(--edge); border-radius: 0 3px 3px 0; }
+  body.final .cell.live .fill { animation: pulse 3s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .72; } }
+
+  .days {
+    display: grid;
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+    gap: clamp(2px, .6vw, 5px);
+    padding: 0 13px 0 5px;
+    margin-top: -1px;
+    color: var(--soft);
+    font-size: .8em;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .days .exam { color: var(--ink); font-weight: 700; }
+
+  .facts {
+    display: flex;
+    flex-wrap: nowrap;
     justify-content: space-between;
-    align-items: baseline;
-    gap: 0 12px;
-    margin-top: clamp(6px, 4vh, 14px);
-    padding-top: clamp(4px, 3vh, 10px);
-    border-top: 1px solid var(--line);
+    gap: 2px 14px;
+    color: var(--soft);
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .facts b { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #rain, .fill { animation: none !important; }
   }
 
-  .other .left { min-width: 0; }
-  .other .when { margin-left: 0.5em; }
-  .other .right { color: var(--soft); font-variant-numeric: tabular-nums; }
-
-  /* Keep the second line to one row where space is tight. */
+  /* About 600x200: the essentials */
+  @media (max-height: 279px) {
+    #arc text, .days, .long { display: none; }
+    .now { font-size: 1.6em; }
+    .num { font-size: clamp(26px, min(10vw, 23vh), 60px); }
+    .cells { height: clamp(11px, 7vh, 18px); padding: 2px; }
+    .cap { height: 50%; }
+    .side { flex-direction: row; align-items: center; }
+  }
   @media (max-width: 460px) {
-    .year { display: none; }
+    .year, .since { display: none; }
+    .side .line { display: none; }
+  }
+  @media (max-height: 179px) {
+    .head, .facts, .lab { display: none; }
+    .now { font-size: 1.4em; }
   }
   @media (max-width: 340px) {
-    .other .when { display: none; }
-  }
-  @media (max-height: 130px) {
-    .lab { display: none; }
+    .today, .cond { display: none; }
   }
 </style>
 </head>
 <body>
-<main id="app" role="timer" aria-label="Countdown to deadlines">
-  <noscript>
-    PSYC2017 Final Exam: Thu 19 Nov 2026, 5:00pm.
-    SC window closes: Wed 11 Nov 2026, 11:59pm.
-  </noscript>
-</main>
+<div class="layer" id="sky"></div>
+<div class="layer" id="stars"></div>
+<div class="layer" id="clouds"></div>
+<div class="layer" id="rain"></div>
+<div class="layer" id="bleed"></div>
+
+<div class="app">
+  <header class="world">
+    <div>
+      <div class="now" id="now"></div>
+      <div class="today" id="today"></div>
+    </div>
+    <svg id="arc" viewBox="0 0 220 72" aria-hidden="true">
+      <line class="hz" x1="0" y1="48" x2="220" y2="48"></line>
+      <path class="base" d="M10 48A100 38 0 0 1 210 48"></path>
+      <path class="base" d="M210 48A100 16 0 0 1 10 48"></path>
+      <path class="past" id="dayPast" pathLength="1" d="M10 48A100 38 0 0 1 210 48"></path>
+      <path class="past" id="nightPast" pathLength="1" d="M210 48A100 16 0 0 1 10 48"></path>
+      <circle id="body" r="6.5" cx="10" cy="48"></circle>
+      <text id="riseT" x="4" y="69"></text>
+      <text id="setT" x="216" y="69" text-anchor="end"></text>
+    </svg>
+    <div class="right">
+      <div class="cond" id="cond"></div>
+      <div class="sub" id="light"></div>
+    </div>
+  </header>
+
+  <main class="panel">
+    <div class="head">
+      <span class="name">PSYC2017 Final Exam</span>
+      <span class="when">Thu 19 Nov<span class="year"> 2026</span>, 5:00pm<span id="examWx"></span></span>
+    </div>
+
+    <div class="main">
+      <div class="digits" id="digits" role="timer" aria-label="Time left until the exam">
+        <div class="unit"><span class="num" id="d"></span><span class="lab" id="dLab">days</span></div>
+        <div class="unit"><span class="num" id="h"></span><span class="lab">hrs</span></div>
+        <div class="unit"><span class="num" id="m"></span><span class="lab">min</span></div>
+        <div class="unit"><span class="num" id="s"></span><span class="lab">sec</span></div>
+      </div>
+      <div class="finished" id="finished" hidden>done</div>
+      <div class="side">
+        <div class="line" id="line"></div>
+        <button id="sprint" type="button">Start 25</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="battery" id="battery" role="img">
+        <div class="cells" id="cells"></div>
+        <div class="cap"></div>
+      </div>
+      <div class="days" id="days" aria-hidden="true"></div>
+    </div>
+
+    <div class="facts" id="facts">
+      <span><b id="rises"></b> <span id="risesLab">sunrises</span></span>
+      <span><b id="waking"></b> waking hrs</span>
+      <span class="since"><b id="gone"></b> gone<span class="long"> since you opened this</span></span>
+      <span><b id="done"></b> <span id="doneLab">sprints</span> today</span>
+    </div>
+  </main>
+</div>
+
+<noscript>PSYC2017 Final Exam: Thu 19 Nov 2026, 5:00pm Sydney time.</noscript>
 
 <script>
 (function () {
   "use strict";
 
-  // Fixed instants. Sydney is on AEDT (UTC+11) throughout November 2026, so
-  // these are correct whatever timezone the viewer's device is set to.
-  var DEADLINES = [
-    { name: "PSYC2017 Final Exam", when: "Thu 19 Nov", year: "2026", time: "5:00pm",
-      at: Date.parse("2026-11-19T17:00:00+11:00") },
-    { name: "SC window closes", when: "Wed 11 Nov", year: "2026", time: "11:59pm",
-      at: Date.parse("2026-11-11T23:59:00+11:00") }
+  // Sydney is on AEDT (UTC+11) for this whole countdown, so this is exact on any device.
+  var EXAM = Date.parse("2026-11-19T17:00:00+11:00");
+  var OFFSET = 11 * 36e5;
+  var LAT = -33.888, LNG = 151.187; // University of Sydney
+  var SECOND = 1000, MINUTE = 6e4, HOUR = 36e5, DAY = 864e5;
+  var SPRINT = 25 * MINUTE;
+  var WEATHER_EVERY = 30 * MINUTE;
+  var KEY = "exam-countdown-sprints";
+  var WEATHER_URL = "https://api.open-meteo.com/v1/forecast?latitude=-33.89&longitude=151.19" +
+    "&current=temperature_2m,weather_code,cloud_cover&daily=weather_code,temperature_2m_max" +
+    "&timezone=Australia%2FSydney&forecast_days=16";
+
+  var root = document.documentElement;
+  function $(id) { return document.getElementById(id); }
+  function clamp(x, a, b) { return Math.min(b, Math.max(a, x)); }
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+
+  // Only touch the page when a value has really changed.
+  var seen = {};
+  function text(id, value) {
+    if (seen[id] !== value) { seen[id] = value; $(id).textContent = value; }
+  }
+  function prop(name, value) {
+    if (seen[name] !== value) { seen[name] = value; root.style.setProperty(name, value); }
+  }
+  function style(id, key, value) {
+    var k = id + "." + key;
+    if (seen[k] !== value) { seen[k] = value; $(id).style[key] = value; }
+  }
+
+  /* Colour: blended in OKLab so the green-yellow-red path stays even. */
+  function toLin(c) { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
+  function toByte(c) {
+    c = clamp(c, 0, 1);
+    c = c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+    return Math.round(c * 255);
+  }
+  function rgb(hex) {
+    var n = parseInt(hex.slice(1), 16);
+    return [toLin(n >> 16 & 255), toLin(n >> 8 & 255), toLin(n & 255)];
+  }
+  function toLab(c) {
+    var l = Math.cbrt(0.4122214708 * c[0] + 0.5363325363 * c[1] + 0.0514459929 * c[2]);
+    var m = Math.cbrt(0.2119034982 * c[0] + 0.6806995451 * c[1] + 0.1073969566 * c[2]);
+    var s = Math.cbrt(0.0883024619 * c[0] + 0.2817188376 * c[1] + 0.6299787005 * c[2]);
+    return [0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+            1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+            0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s];
+  }
+  function fromLab(c) {
+    var l = c[0] + 0.3963377774 * c[1] + 0.2158037573 * c[2];
+    var m = c[0] - 0.1055613458 * c[1] - 0.0638541728 * c[2];
+    var s = c[0] - 0.0894841775 * c[1] - 1.291485548 * c[2];
+    l = l * l * l; m = m * m * m; s = s * s * s;
+    var v = [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+             -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+             -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s];
+    return "#" + v.map(function (x) { var b = toByte(x).toString(16); return b.length < 2 ? "0" + b : b; }).join("");
+  }
+  function mix(a, b, t) {
+    var x = toLab(rgb(a)), y = toLab(rgb(b));
+    return fromLab([x[0] + (y[0] - x[0]) * t, x[1] + (y[1] - x[1]) * t, x[2] + (y[2] - x[2]) * t]);
+  }
+  function lum(hex) { var c = rgb(hex); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; }
+  function contrast(a, b) {
+    var x = lum(a), y = lum(b);
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+  }
+  // Lifts a colour towards white until it clears the contrast target.
+  function legible(fg, bg, target) {
+    for (var t = 0; t <= 1.001; t += 0.04) {
+      var c = mix(fg, "#ffffff", Math.min(t, 1));
+      if (contrast(c, bg) >= target) return c;
+    }
+    return "#ffffff";
+  }
+
+  var BLACK = "#08090b", BLOOD = "#7a0611";
+  var RAMP = [[10, "#2fd36f"], [7, "#9fd62a"], [5, "#ffd60a"], [3, "#ff8a1f"], [1, "#ff3b30"]];
+
+  function urgency(days) {
+    if (days > 10) return { fg: "#4da3ff", panel: BLACK, flood: 0 };
+    if (days <= 1) {
+      var t = 1 - Math.max(days, 0);
+      return { fg: mix(RAMP[4][1], "#ffffff", t), panel: mix(BLACK, BLOOD, t), flood: t };
+    }
+    for (var i = 0; i < RAMP.length - 1; i++) {
+      if (days <= RAMP[i][0] && days >= RAMP[i + 1][0]) {
+        var f = (RAMP[i][0] - days) / (RAMP[i][0] - RAMP[i + 1][0]);
+        return { fg: mix(RAMP[i][1], RAMP[i + 1][1], f), panel: BLACK, flood: 0 };
+      }
+    }
+    return { fg: RAMP[4][1], panel: BLACK, flood: 0 };
+  }
+
+  function paintUrgency(days) {
+    var u = urgency(days);
+    var fg = legible(u.fg, u.panel, 4.5);
+    prop("--fg", fg);
+    prop("--panel", u.panel);
+    prop("--soft", legible(mix(u.panel, "#ffffff", 0.72), u.panel, 7));
+    prop("--track", mix(u.panel, "#ffffff", 0.16));
+    prop("--edge", legible(mix(u.panel, "#ffffff", 0.42), u.panel, 3));
+    style("bleed", "opacity", u.flood.toFixed(3));
+    var final = days > 0 && days <= 1;
+    if (seen.final !== final) { seen.final = final; document.body.classList.toggle("final", final); }
+  }
+
+  /* Sun position and rise/set, calculated here so the sky works offline. */
+  var RAD = Math.PI / 180, E = 23.4397 * RAD, J1970 = 2440588, J2000 = 2451545;
+  function toDays(ms) { return ms / DAY - 0.5 + J1970 - J2000; }
+  function fromJulian(j) { return (j + 0.5 - J1970) * DAY; }
+  function anomaly(d) { return RAD * (357.5291 + 0.98560028 * d); }
+  function ecliptic(M) {
+    var C = RAD * (1.9148 * Math.sin(M) + 0.02 * Math.sin(2 * M) + 0.0003 * Math.sin(3 * M));
+    return M + C + RAD * 102.9372 + Math.PI;
+  }
+  function altitude(ms) {
+    var d = toDays(ms), L = ecliptic(anomaly(d)), phi = LAT * RAD, lw = -LNG * RAD;
+    var dec = Math.asin(Math.sin(E) * Math.sin(L));
+    var ra = Math.atan2(Math.sin(L) * Math.cos(E), Math.cos(L));
+    var H = RAD * (280.16 + 360.9856235 * d) - lw - ra;
+    return Math.asin(Math.sin(phi) * Math.sin(dec) + Math.cos(phi) * Math.cos(dec) * Math.cos(H)) / RAD;
+  }
+  function sunTimes(ms) {
+    var lw = -LNG * RAD, phi = LAT * RAD, d = toDays(ms), J0 = 0.0009;
+    var n = Math.round(d - J0 - lw / (2 * Math.PI));
+    var ds = J0 + lw / (2 * Math.PI) + n, M = anomaly(ds), L = ecliptic(M);
+    var dec = Math.asin(Math.sin(E) * Math.sin(L));
+    var noon = J2000 + ds + 0.0053 * Math.sin(M) - 0.0069 * Math.sin(2 * L);
+    var w = Math.acos((Math.sin(-0.833 * RAD) - Math.sin(phi) * Math.sin(dec)) / (Math.cos(phi) * Math.cos(dec)));
+    var a = J0 + (w + lw) / (2 * Math.PI) + n;
+    var set = J2000 + a + 0.0053 * Math.sin(M) - 0.0069 * Math.sin(2 * L);
+    return { rise: fromJulian(noon - (set - noon)), set: fromJulian(set) };
+  }
+
+  /* Sydney clock text */
+  var clockFmt = new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", minute: "2-digit", hour12: true });
+  var dateFmt = new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Sydney", weekday: "short", day: "numeric", month: "short" });
+  var keyFmt = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Sydney", year: "numeric", month: "2-digit", day: "2-digit" });
+  function part(parts, type) {
+    for (var i = 0; i < parts.length; i++) if (parts[i].type === type) return parts[i].value;
+    return "";
+  }
+  function clock(ms) {
+    var p = clockFmt.formatToParts(ms);
+    return part(p, "hour") + ":" + part(p, "minute") + part(p, "dayPeriod").toLowerCase();
+  }
+  function dateText(ms) {
+    var p = dateFmt.formatToParts(ms);
+    return part(p, "weekday") + " " + part(p, "day") + " " + part(p, "month");
+  }
+  function dayKey(ms) { return keyFmt.format(ms); }
+  function span(ms) {
+    var m = Math.max(1, Math.round(ms / MINUTE)), h = Math.floor(m / 60);
+    return h ? h + "h " + (m % 60) + "m" : m + "m";
+  }
+
+  /* Weather */
+  var weather = null;
+  var lastFetch = 0;
+  function describe(code) {
+    if (code === 0) return { text: "Clear", cloud: 0, rain: 0 };
+    if (code === 1) return { text: "Mostly clear", cloud: 0.2, rain: 0 };
+    if (code === 2) return { text: "Partly cloudy", cloud: 0.5, rain: 0 };
+    if (code === 3) return { text: "Overcast", cloud: 0.95, rain: 0 };
+    if (code === 45 || code === 48) return { text: "Fog", cloud: 1, rain: 0 };
+    if (code >= 51 && code <= 57) return { text: "Drizzle", cloud: 0.85, rain: 0.3 };
+    if (code === 61 || code === 66) return { text: "Light rain", cloud: 0.9, rain: 0.5 };
+    if (code === 63 || code === 67) return { text: "Rain", cloud: 1, rain: 0.75 };
+    if (code === 65) return { text: "Heavy rain", cloud: 1, rain: 1 };
+    if (code >= 71 && code <= 77) return { text: "Snow", cloud: 1, rain: 0.3 };
+    if (code === 80) return { text: "Showers", cloud: 0.8, rain: 0.55 };
+    if (code === 81) return { text: "Showers", cloud: 0.9, rain: 0.75 };
+    if (code === 82) return { text: "Heavy showers", cloud: 1, rain: 1 };
+    if (code === 85 || code === 86) return { text: "Snow showers", cloud: 1, rain: 0.4 };
+    if (code >= 95) return { text: "Thunderstorm", cloud: 1, rain: 1, storm: true };
+    return { text: "", cloud: 0.4, rain: 0 };
+  }
+  function fetchWeather(now) {
+    lastFetch = now;
+    if (!window.fetch) return;
+    fetch(WEATHER_URL).then(function (r) {
+      if (!r.ok) throw new Error("weather");
+      return r.json();
+    }).then(function (data) {
+      var d = describe(data.current.weather_code);
+      weather = { temp: Math.round(data.current.temperature_2m), desc: d, exam: "" };
+      if (typeof data.current.cloud_cover === "number" && !d.rain) {
+        d.cloud = Math.max(d.cloud, data.current.cloud_cover / 100);
+      }
+      var i = data.daily.time.indexOf("2026-11-19");
+      if (i >= 0) {
+        var ex = describe(data.daily.weather_code[i]);
+        weather.exam = (ex.text ? ex.text.toLowerCase() + ", " : "") + Math.round(data.daily.temperature_2m_max[i]) + "°";
+      }
+      minuteKey = null; // repaint the sky with the new conditions
+      tick();
+    }).catch(function () { weather = null; minuteKey = null; tick(); });
+  }
+
+  /* The sky */
+  var SKY = [
+    [-18, "#050816", "#0b1430"],
+    [-6, "#131b47", "#3b2a6b"],
+    [-0.8, "#2b3a78", "#c8553d"],
+    [6, "#2c66a8", "#d98a4b"],
+    [20, "#1c5fae", "#3f8fd6"],
+    [60, "#1657a8", "#3a8ad8"]
   ];
-
-  var MINUTE = 60000;
-  var app = document.getElementById("app");
-  var last = "";
-  var timer;
-
-  function esc(s) {
-    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
-  }
-
-  // Rounds up, so the clock never reads 0 0 0 while time is still left.
-  function parts(ms) {
-    var m = Math.ceil(ms / MINUTE);
-    return { d: Math.floor(m / 1440), h: Math.floor(m / 60) % 24, m: m % 60 };
-  }
-
-  function dateText(d) {
-    return esc(d.when) + '<span class="year"> ' + esc(d.year) + "</span>, " + esc(d.time);
-  }
-
-  function unit(n, word) {
-    return '<div class="unit"><span class="num">' + n + '</span><span class="lab">' +
-      word + (n === 1 ? "" : "s") + "</span></div>";
-  }
-
-  function doneText(next) {
-    return "done — " + (next ? "next: " + esc(next.name) : "nothing left on this list");
-  }
-
-  function render(now) {
-    var upcoming = DEADLINES.filter(function (d) { return d.at > now; })
-      .sort(function (a, b) { return a.at - b.at; });
-    var passed = DEADLINES.filter(function (d) { return d.at <= now; })
-      .sort(function (a, b) { return b.at - a.at; });
-    var next = upcoming[0] || null;
-    var hero = next || passed[0];
-    var other = DEADLINES[0] === hero ? DEADLINES[1] : DEADLINES[0];
-
-    var body;
-    if (next) {
-      var p = parts(hero.at - now);
-      body = '<div class="clock">' + unit(p.d, "day") + unit(p.h, "hour") + unit(p.m, "minute") + "</div>";
-    } else {
-      body = '<p class="quiet">' + doneText(null) + "</p>";
+  function paintSky(now) {
+    var alt = altitude(now), a = SKY[0], b = SKY[SKY.length - 1], top, bot;
+    if (alt <= a[0]) { top = a[1]; bot = a[2]; }
+    else if (alt >= b[0]) { top = b[1]; bot = b[2]; }
+    else {
+      for (var i = 0; i < SKY.length - 1; i++) {
+        if (alt >= SKY[i][0] && alt <= SKY[i + 1][0]) {
+          var f = (alt - SKY[i][0]) / (SKY[i + 1][0] - SKY[i][0]);
+          top = mix(SKY[i][1], SKY[i + 1][1], f);
+          bot = mix(SKY[i][2], SKY[i + 1][2], f);
+          break;
+        }
+      }
     }
+    var light = clamp((alt + 6) / 12, 0, 1);
+    var d = weather ? weather.desc : { cloud: 0, rain: 0 };
+    var grey = Math.min(0.9, d.cloud * 0.75 + d.rain * 0.25);
+    top = mix(top, mix("#0b0e14", "#46515e", light), grey);
+    bot = mix(bot, mix("#12151c", "#66727f", light), grey);
+    if (d.storm) { top = mix(top, "#0a0c12", 0.45); bot = mix(bot, "#0a0c12", 0.45); }
+    style("sky", "background", "linear-gradient(" + top + ", " + bot + ")");
+    style("stars", "opacity", ((1 - light) * (1 - d.cloud)).toFixed(2));
+    style("clouds", "opacity", (d.cloud * (0.35 + 0.65 * light)).toFixed(2));
+    style("rain", "opacity", (d.rain * 0.6).toFixed(2));
+    var raining = d.rain > 0;
+    if (seen.raining !== raining) { seen.raining = raining; document.body.classList.toggle("raining", raining); }
+  }
 
-    var right, otherDate = "";
-    if (other.at > now) {
-      var q = parts(other.at - now);
-      right = q.d + "d " + q.h + "h " + q.m + "m";
-      otherDate = '<span class="when">' + dateText(other) + "</span>";
-    } else {
-      right = next ? doneText(next) : "done";
+  function paintArc(now) {
+    var t = sunTimes(now), isDay = now >= t.rise && now < t.set, start, end;
+    if (isDay) { start = t.rise; end = t.set; }
+    else if (now < t.rise) { start = sunTimes(now - DAY).set; end = t.rise; }
+    else { start = t.set; end = sunTimes(now + DAY).rise; }
+    var f = clamp((now - start) / (end - start), 0, 1), x, y;
+    if (isDay) { x = 110 - 100 * Math.cos(Math.PI * f); y = 48 - 38 * Math.sin(Math.PI * f); }
+    else { x = 110 + 100 * Math.cos(Math.PI * f); y = 48 + 16 * Math.sin(Math.PI * f); }
+    var body = $("body");
+    body.setAttribute("cx", x.toFixed(1));
+    body.setAttribute("cy", y.toFixed(1));
+    body.setAttribute("fill", isDay ? "#ffd60a" : "#e8ecf5");
+    $("dayPast").style.strokeDasharray = (isDay ? f.toFixed(4) : "0") + " 1";
+    $("nightPast").style.strokeDasharray = (isDay ? "0" : f.toFixed(4)) + " 1";
+    text("riseT", clock(isDay ? t.rise : end));
+    text("setT", clock(isDay ? t.set : start));
+    var narrow = window.innerWidth <= 340;
+    text("light", isDay ? span(t.set - now) + (narrow ? " daylight" : " of daylight left") : "sunrise in " + span(end - now));
+  }
+
+  /* Time-blindness facts */
+  function sunrisesLeft(now) {
+    var count = 0;
+    for (var ms = now - DAY; ms < EXAM + DAY; ms += DAY) {
+      var r = sunTimes(ms).rise;
+      if (r > now && r < EXAM) count++;
     }
+    return count;
+  }
+  // Hours left outside the 11pm to 7am sleep window.
+  function wakingLeft(now) {
+    var total = Math.max(0, EXAM - now), asleep = 0;
+    var first = Math.floor((now + OFFSET) / DAY) - 1;
+    var last = Math.floor((EXAM + OFFSET) / DAY);
+    for (var d = first; d <= last; d++) {
+      var from = d * DAY + 23 * HOUR - OFFSET, to = from + 8 * HOUR;
+      asleep += Math.max(0, Math.min(to, EXAM) - Math.max(from, now));
+    }
+    return (total - asleep) / HOUR;
+  }
+  var WORDS = ["Zero", "One", "Two", "Three"];
+  function stageLine(days, rises) {
+    if (days > 10) return "Full battery. It starts draining at 5pm Monday.";
+    if (days <= 1 / 24) return "Final hour.";
+    if (rises === 0) return "It's today.";
+    if (days <= 3) return WORDS[Math.min(rises, 3)] + (rises === 1 ? " sunrise left." : " sunrises left.");
+    if (days <= 5) return "Half your battery is gone.";
+    if (days <= 8) return "Don't wait for a better day.";
+    return "The first blocks are going. Start today.";
+  }
 
-    var html =
-      '<div class="head"><span class="name">' + esc(hero.name) + "</span>" +
-      '<span class="when">' + dateText(hero) + "</span></div>" +
-      body +
-      '<div class="other"><span class="left"><span class="name">' + esc(other.name) + "</span>" +
-      otherDate + "</span>" +
-      '<span class="right">' + right + "</span></div>";
-
-    if (html !== last) {
-      app.innerHTML = html;
-      last = html;
+  /* Battery */
+  var cells = [], labels = [];
+  for (var i = 0; i < 10; i++) {
+    var cell = document.createElement("div");
+    cell.className = "cell";
+    var fill = document.createElement("div");
+    fill.className = "fill";
+    cell.appendChild(fill);
+    $("cells").appendChild(cell);
+    cells.push({ cell: cell, fill: fill, w: null, live: false });
+    var lab = document.createElement("div");
+    var p = dateFmt.formatToParts(EXAM - i * DAY);
+    lab.textContent = part(p, "weekday");
+    lab.title = dateText(EXAM - i * DAY);
+    if (i === 0) lab.className = "exam";
+    $("days").appendChild(lab);
+    labels.push(lab);
+  }
+  function paintBattery(days) {
+    for (var i = 0; i < 10; i++) {
+      var c = cells[i], level = clamp(days - i, 0, 1);
+      var w = (level * 100).toFixed(2) + "%";
+      if (c.w !== w) { c.w = w; c.fill.style.width = w; }
+      var live = level > 0 && level < 1;
+      if (c.live !== live) { c.live = live; c.cell.classList.toggle("live", live); }
     }
   }
 
-  // Both deadlines fall on a whole minute, so one update per minute is enough.
+  /* Sprint */
+  var sprint = { day: "", count: 0, endAt: 0 };
+  try {
+    var stored = JSON.parse(localStorage.getItem(KEY));
+    if (stored && typeof stored.count === "number") sprint = stored;
+  } catch (e) {}
+  function saveSprint() {
+    try { localStorage.setItem(KEY, JSON.stringify(sprint)); } catch (e) {}
+  }
+  function syncSprint(now) {
+    var day = dayKey(now), changed = false;
+    if (sprint.day !== day) { sprint.day = day; sprint.count = 0; changed = true; }
+    if (sprint.endAt && now >= sprint.endAt) {
+      if (dayKey(sprint.endAt) === day) sprint.count++;
+      sprint.endAt = 0;
+      changed = true;
+    }
+    if (changed) saveSprint();
+  }
+  $("sprint").addEventListener("click", function () {
+    sprint.endAt = sprint.endAt ? 0 : Date.now() + SPRINT;
+    saveSprint();
+    tick();
+  });
+
+  /* Every second */
+  var loadedAt = Date.now();
+  var timer, minuteKey = null;
+
+  function paintMinute(now, days) {
+    text("now", clock(now));
+    text("today", dateText(now));
+    paintSky(now);
+    paintArc(now);
+    var cond = $("cond"), wx = weather;
+    var line = wx ? wx.temp + "°" + (wx.desc.text ? " " + wx.desc.text : "") : "";
+    text("cond", line);
+    cond.hidden = !wx;
+    text("examWx", wx && wx.exam ? " · " + wx.exam : "");
+    var rises = days > 0 ? sunrisesLeft(now) : 0;
+    text("rises", String(rises));
+    text("risesLab", rises === 1 ? "sunrise" : "sunrises");
+    var w = wakingLeft(now);
+    text("waking", w >= 1 ? String(Math.floor(w)) : "<1");
+    text("line", days > 0 ? stageLine(days, rises) : "");
+    var left = clamp(days, 0, 10).toFixed(1);
+    $("battery").setAttribute("aria-label", left + " of 10 days left in the battery");
+  }
+
   function tick() {
     clearTimeout(timer);
     var now = Date.now();
-    render(now);
-    timer = setTimeout(tick, MINUTE - (now % MINUTE) + 50);
+    var paused = document.hidden;
+    if (seen.paused !== paused) { seen.paused = paused; document.body.classList.toggle("paused", paused); }
+
+    var over = now >= EXAM;
+    var days = Math.max(0, EXAM - now) / DAY;
+    var key = Math.floor(now / MINUTE);
+
+    if (key !== minuteKey) {
+      minuteKey = key;
+      paintMinute(now, days);
+    }
+    if (now - lastFetch >= WEATHER_EVERY || lastFetch === 0) fetchWeather(now);
+
+    paintBattery(days);
+    if (over) {
+      prop("--fg", "#f2f3f5");
+      prop("--panel", BLACK);
+      prop("--soft", "#c4c7cd");
+      prop("--track", "#2b2e36");
+      prop("--edge", "#5a5f6b");
+      style("bleed", "opacity", "0");
+      if (seen.final !== false) { seen.final = false; document.body.classList.remove("final"); }
+      $("digits").hidden = true;
+      $("finished").hidden = false;
+      $("sprint").hidden = true;
+      $("facts").hidden = true;
+      return; // nothing left to count
+    }
+    paintUrgency(days);
+
+    var left = Math.ceil((EXAM - now) / SECOND); // never reads zero while time remains
+    var d = Math.floor(left / 86400);
+    text("d", String(d));
+    text("dLab", d === 1 ? "day" : "days");
+    text("h", pad(Math.floor(left / 3600) % 24));
+    text("m", pad(Math.floor(left / 60) % 60));
+    text("s", pad(left % 60));
+
+    var since = Math.floor((now - loadedAt) / SECOND);
+    var hrs = Math.floor(since / 3600);
+    text("gone", (hrs ? hrs + ":" + pad(Math.floor(since / 60) % 60) : Math.floor(since / 60)) + ":" + pad(since % 60));
+
+    syncSprint(now);
+    text("done", String(sprint.count));
+    text("doneLab", sprint.count === 1 ? "sprint" : "sprints");
+    if (sprint.endAt) {
+      var rest = Math.ceil((sprint.endAt - now) / SECOND);
+      text("sprint", pad(Math.floor(rest / 60)) + ":" + pad(rest % 60) + " · stop");
+    } else {
+      text("sprint", "Start 25");
+    }
+
+    // Hidden pages still paint, slowly, so an embed that reports "hidden" is never blank.
+    timer = setTimeout(tick, paused ? MINUTE : SECOND - (now % SECOND) + 20);
   }
 
-  // Timers stall while a device sleeps or a tab is hidden, so catch up on return.
-  document.addEventListener("visibilitychange", function () {
-    if (!document.hidden) tick();
-  });
+  // Timers stall while a device sleeps or a page is hidden, so catch up on return.
+  document.addEventListener("visibilitychange", tick);
   window.addEventListener("pageshow", tick);
   window.addEventListener("focus", tick);
 
