@@ -13,6 +13,9 @@
     --tide: #50fa7b;
     --day: #50fa7b;
     --hour: #8be9fd;
+    --c-h: #8be9fd; /* hrs tile: today */
+    --c-m: #f1fa8c; /* min tile: this hour */
+    --c-s: #ff79c6; /* sec tile: this minute */
     --panel: #171b36;
     --ink: #f8f8f2;
     --soft: #c3c9ee;
@@ -176,12 +179,17 @@
     flex-direction: column;
     align-items: center;
     padding: clamp(3px, 1vmin, 12px) clamp(5px, 1.6vw, 22px);
-    border: 2px solid var(--fg);
+    --tc: var(--fg);
+    border: 2px solid var(--tc);
     border-radius: 12px;
   }
+  /* Each tile is coloured by its own clock: the 10-day block, today, this hour, this minute. */
+  .tile:nth-child(2) { --tc: var(--c-h); }
+  .tile:nth-child(3) { --tc: var(--c-m); }
+  .tile:nth-child(4) { --tc: var(--c-s); }
   .num {
     min-width: 2ch;
-    color: var(--fg);
+    color: var(--tc);
     font-size: clamp(26px, min(10vw, 16vh), 190px);
     font-weight: 700;
     font-variant-numeric: tabular-nums;
@@ -1086,6 +1094,14 @@
     text("m", pad(Math.floor(left / 60) % 60));
     text("s", pad(left % 60));
     text("waking", hms((LINE - now) * 2 / 3)); // 8 of every 24 hours are sleep
+
+    // Tile colours: hrs follows today, min follows this hour (or the running timer), sec follows this minute.
+    var todayLeft = ((LINE - now) % DAY || DAY) / DAY;
+    var hourLeft = hour.startAt ? clamp((BLOCK - (now - hour.startAt)) / BLOCK, 0, 1) : (3600 - left % 3600) / 3600;
+    var minuteLeft = (60 - left % 60) / 60;
+    prop("--c-h", legible(ramp([[1, "#8be9fd"], [0.5, "#bd93f9"], [0, "#ff79c6"]], todayLeft), panelNow, 4.5));
+    prop("--c-m", legible(ramp([[1, "#f1fa8c"], [0, "#ffb86c"]], hourLeft), panelNow, 4.5));
+    prop("--c-s", legible(ramp([[1, "#ff79c6"], [0, "#ff5555"]], minuteLeft), panelNow, 4.5));
 
     // Hidden pages still paint, slowly, so an embed that reports "hidden" is never blank.
     timer = setTimeout(tick, paused ? MINUTE : SECOND - (now % SECOND) + 20);
