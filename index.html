@@ -8,13 +8,21 @@
 <style>
   :root {
     color-scheme: dark;
-    --fg: #2fd36f;
-    --tide: #2fd36f;
-    --panel: #08090b;
-    --ink: #f2f3f5;
-    --soft: #c4c7cd;
-    --track: #2b2e36;
-    --edge: #5a5f6b;
+    /* Dracula-style neon on navy. --fg follows the 10-day urgency ramp; --day follows today. */
+    --fg: #50fa7b;
+    --tide: #50fa7b;
+    --day: #50fa7b;
+    --hour: #8be9fd;
+    --panel: #171b36;
+    --ink: #f8f8f2;
+    --soft: #c3c9ee;
+    --track: #2a3059;
+    --edge: #4b5390;
+    --pink: #ff79c6;
+    --purple: #bd93f9;
+    --cyan: #8be9fd;
+    --orange: #ffb86c;
+    --yellow: #f1fa8c;
     --cloud: #ffffff;
     --pad: clamp(5px, 1.5vmin, 14px);
   }
@@ -113,7 +121,7 @@
     position: relative;
     display: grid;
     grid-template-columns: minmax(0, 1fr); /* long labels may never widen the page */
-    grid-template-rows: minmax(0, 1fr) auto auto auto auto;
+    grid-template-rows: auto minmax(0, 1fr) auto auto auto;
     gap: var(--pad);
     height: 100%;
     padding: var(--pad);
@@ -149,15 +157,15 @@
   .chip {
     min-width: 0;
     padding: clamp(2px, .8vmin, 7px) clamp(7px, 1.8vw, 14px);
-    color: #fff;
-    background: rgba(8, 9, 11, .72);
+    color: var(--ink);
+    background: rgba(23, 27, 54, .8);
     border-radius: 11px;
   }
   .now { font-size: 1.75em; font-weight: 700; line-height: 1.05; font-variant-numeric: tabular-nums; }
   .today, .sub, .cond, .next { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .right { text-align: right; }
-  .cond { font-weight: 700; }
-  .next { font-variant-numeric: tabular-nums; }
+  .cond { font-weight: 700; color: var(--cyan); }
+  .next { color: var(--yellow); font-variant-numeric: tabular-nums; }
 
   /* Timer tiles */
   .main { display: flex; align-items: stretch; gap: var(--pad); }
@@ -205,17 +213,17 @@
     padding: clamp(3px, 1vmin, 12px) clamp(6px, 1.6vw, 16px);
     border-radius: 12px;
   }
-  .line { color: var(--fg); font-size: 1.2em; font-weight: 700; text-align: right; }
+  .line { color: var(--pink); font-size: 1.2em; font-weight: 700; text-align: right; }
   .exam { color: var(--soft); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .exam b { color: var(--ink); }
+  .exam b { color: var(--pink); }
 
-  /* Hourly timer */
-  .hour { display: flex; align-items: center; gap: 6px; }
-  .hour button, .mini {
+  /* Hourly timer: the start button lives in the side tile, the running bar at the top */
+  .hour { display: flex; justify-content: flex-end; align-items: center; gap: 6px; min-width: 0; }
+  button {
     flex: none;
     padding: .25em .7em;
     color: var(--panel);
-    background: var(--fg);
+    background: var(--hour);
     border: 0;
     border-radius: 999px;
     font: inherit;
@@ -225,31 +233,37 @@
     cursor: pointer;
   }
   button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-  .hourTrack { flex: 1; height: clamp(8px, 2.4vh, 22px); padding: 2px; border: 2px solid var(--edge); border-radius: 999px; }
-  .hourInner { height: 100%; background: var(--track); border-radius: 999px; overflow: hidden; }
-  .hourFill { width: 100%; height: 100%; background: var(--fg); }
-  .hourRead { flex: none; min-width: 5ch; color: var(--fg); font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
-  body.overtime .hourRead { animation: pulse 1.4s ease-in-out infinite; }
-  .last { display: flex; justify-content: flex-end; align-items: center; gap: 6px; color: var(--soft); font-size: .9em; white-space: nowrap; overflow: hidden; }
+  .last { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--soft); font-size: .9em; white-space: nowrap; overflow: hidden; }
   .last .mini { padding: .15em .55em; font-size: .95em; }
-  .last a { color: var(--ink); }
+  .last a { color: var(--cyan); }
   @keyframes pulse { 50% { opacity: .55; } }
 
-  /* Today's bar */
-  .daybar {
+  /* Top strip: the hour bar (while running) above today's bar */
+  .top { display: flex; flex-direction: column; gap: var(--pad); }
+  .bar {
     display: flex;
     flex-direction: column;
     gap: clamp(2px, .7vmin, 7px);
     padding: clamp(3px, 1vmin, 11px) clamp(8px, 2vw, 18px);
+    background: var(--panel);
     border-radius: 12px;
   }
-  .dayHead { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; white-space: nowrap; }
-  .dayLeft { font-weight: 700; }
-  .dayRight { color: var(--soft); font-variant-numeric: tabular-nums; }
-  .dayRight b { color: var(--fg); font-size: 1.3em; font-weight: 700; }
-  .dayTrack { height: clamp(12px, 4.4vh, 56px); padding: 2px; border: 2px solid var(--edge); border-radius: 7px; }
-  .dayInner { height: 100%; background: var(--track); border-radius: 3px; overflow: hidden; }
+  .barHead { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; white-space: nowrap; }
+  .barLeft { font-weight: 700; }
+  .barRight { color: var(--soft); font-variant-numeric: tabular-nums; }
+  .barRight b { font-size: 1.3em; font-weight: 700; }
+  .track { height: clamp(10px, 3.6vh, 48px); padding: 2px; border: 2px solid var(--edge); border-radius: 7px; }
+  .inner { height: 100%; background: var(--track); border-radius: 3px; overflow: hidden; }
   .fill { width: 100%; height: 100%; background: var(--fg); }
+  .daybar { --c: var(--day); }
+  .hourbar { --c: var(--hour); }
+  .bar .barRight b, .bar .barLeft { color: var(--c); }
+  .bar .track { border-color: var(--c); }
+  .bar .fill { background: var(--c); }
+  .hourbar .barRight { display: flex; align-items: center; gap: 8px; }
+  .hourbar button { padding: .1em .6em; }
+  body.overtime .hourbar { --c: var(--pink); }
+  body.overtime .hourbar .barRight b { animation: pulse 1.4s ease-in-out infinite; }
 
   /* Battery */
   .power { display: flex; flex-direction: column; gap: clamp(2px, .8vmin, 8px); padding: clamp(4px, 1.2vmin, 12px) clamp(8px, 2vw, 18px); border-radius: 12px; }
@@ -280,9 +294,10 @@
     text-align: center;
     white-space: nowrap;
   }
-  .days .today-block { color: var(--fg); font-weight: 700; }
+  .days .today-block { color: var(--pink); font-weight: 700; }
+  .when b { color: var(--purple); font-weight: 700; }
 
-  /* Counters */
+  /* Counters, each in its own colour */
   .facts { display: flex; gap: var(--pad); white-space: nowrap; overflow: hidden; }
   .fact {
     flex: 1 1 auto;
@@ -292,10 +307,13 @@
     text-align: center;
     font-variant-numeric: tabular-nums;
   }
-  .fact b { color: var(--ink); font-weight: 700; }
+  .fact b { font-weight: 700; }
+  .fact.sun b { color: var(--orange); }
+  .fact.wake b { color: var(--purple); }
+  .fact.log b { color: var(--cyan); }
 
   @media (prefers-reduced-motion: reduce) {
-    #glow, .clouds, .rain, #flash, .twinkle, .fill, .hourRead { animation: none !important; }
+    #glow, .clouds, .rain, #flash, .twinkle, .fill, .barRight b { animation: none !important; }
   }
 
   /* About 600x200: the essentials */
@@ -308,22 +326,22 @@
     .side { gap: 3px; }
     .line { font-size: 1em; }
     .power { padding-top: 2px; padding-bottom: 3px; }
-    .daybar { flex-direction: row; align-items: center; gap: 8px; padding-top: 2px; padding-bottom: 2px; }
-    .dayHead { display: contents; }
-    .dayLeft { order: 0; }
-    .dayTrack { order: 1; flex: 1; height: 11px; padding: 1px; }
-    .dayRight { order: 2; }
-    .dayRight b { font-size: 1em; }
+    .bar { flex-direction: row; align-items: center; gap: 8px; padding-top: 2px; padding-bottom: 2px; }
+    .barHead { display: contents; }
+    .barLeft { order: 0; }
+    .track { order: 1; flex: 1; height: 11px; padding: 1px; }
+    .barRight { order: 2; }
+    .barRight b { font-size: 1em; }
   }
   @media (max-width: 460px) {
     .year, .line, .last, #dayTime { display: none; }
   }
   @media (max-height: 179px) {
-    .head, .lab, .dayLeft, .line { display: none; }
+    .head, .lab, .barLeft, .line { display: none; }
     .now { font-size: 1.2em; }
   }
   @media (max-width: 340px) {
-    .today, .cond, .dayWord, .hourRead { display: none; }
+    .today, .cond, .dayWord { display: none; }
   }
 </style>
 </head>
@@ -344,6 +362,23 @@
 </div>
 
 <div class="app">
+  <div class="top">
+    <div class="bar hourbar" id="hourbar" hidden>
+      <div class="barHead">
+        <span class="barLeft">&#x23F1; <span id="hourName">This hour</span></span>
+        <span class="barRight"><b id="hourRead">60:00</b><button id="stop" type="button" aria-label="Stop and log this block">&#9632; stop</button></span>
+      </div>
+      <div class="track" role="img" aria-label="Minutes left in this hour"><div class="inner"><div class="fill" id="hourFill"></div></div></div>
+    </div>
+    <div class="bar daybar" id="daybar">
+      <div class="barHead">
+        <span class="barLeft">&#x1F4C5; <span id="dayName"></span></span>
+        <span class="barRight"><b id="dayPct"></b><span class="dayWord"> of today left</span> <span id="dayTime"></span></span>
+      </div>
+      <div class="track" id="dayTrack" role="img"><div class="inner"><div class="fill" id="dayFill"></div></div></div>
+    </div>
+  </div>
+
   <header class="world">
     <svg id="arc" aria-hidden="true">
       <defs>
@@ -399,30 +434,20 @@
       <div class="line" id="line"></div>
       <div class="exam" title="The exam starts 17 hours after the 10-day block ends">&#x1F393; <b>Thu 5:00pm</b> &middot; +17h</div>
       <div class="hour">
-        <button id="play" type="button" aria-label="Start a 60-minute block">&#9654;</button>
-        <div class="hourTrack" role="img" aria-label="Minutes left in this hour"><div class="hourInner"><div class="hourFill" id="hourFill"></div></div></div>
-        <span class="hourRead" id="hourRead">60:00</span>
-      </div>
-      <div class="last" id="last" hidden>
-        <span id="lastText"></span>
-        <button class="mini" id="copy" type="button">&#x1F4CB; Copy</button>
-        <a href="https://app.notion.com/p/psyc2017-4120a8dbbff080ec8cc7d06142967a8f" target="_blank" rel="noopener">Notion &#8599;</a>
+        <div class="last" id="last" hidden>
+          <span id="lastText"></span>
+          <button class="mini" id="copy" type="button">&#x1F4CB; Copy</button>
+          <a href="https://app.notion.com/p/psyc2017-4120a8dbbff080ec8cc7d06142967a8f" target="_blank" rel="noopener">Notion &#8599;</a>
+        </div>
+        <button id="play" type="button" aria-label="Start a 60-minute block">&#9654; 60 min</button>
       </div>
     </div>
-  </div>
-
-  <div class="daybar" id="daybar">
-    <div class="dayHead">
-      <span class="dayLeft">&#x1F4C5; <span id="dayName"></span></span>
-      <span class="dayRight"><b id="dayPct"></b><span class="dayWord"> of today left</span> <span id="dayTime"></span></span>
-    </div>
-    <div class="dayTrack" id="dayTrack" role="img"><div class="dayInner"><div class="fill" id="dayFill"></div></div></div>
   </div>
 
   <div class="power">
     <div class="head">
       <span class="name">&#x1F50B; <span id="blockName">10-day block</span></span>
-      <span class="when">ends 12:00am Thu 19 Nov<span id="examWx"></span></span>
+      <span class="when">ends <b>12:00am Thu 19 Nov</b><span id="examWx"></span></span>
     </div>
     <div class="battery" id="battery" role="img">
       <div class="cells" id="cells"></div>
@@ -432,9 +457,9 @@
   </div>
 
   <div class="facts" id="facts">
-    <span class="fact" title="Sunrises before the line, and time to the next one">&#x2600;&#xFE0F; <b id="rises"></b> &middot; next <b id="riseIn"></b></span>
-    <span class="fact" title="Waking time left: time to the line minus 8 of every 24 hours">&#x23F3; <b id="waking"></b></span>
-    <span class="fact" title="Hours logged with the timer today">&#x23F1; <b id="logged"></b> today</span>
+    <span class="fact sun" title="Sunrises before the line, and time to the next one">&#x2600;&#xFE0F; <b id="rises"></b> &middot; next <b id="riseIn"></b></span>
+    <span class="fact wake" title="Waking time left: time to the line minus 8 of every 24 hours">&#x23F3; <b id="waking"></b></span>
+    <span class="fact log" title="Hours logged with the timer today">&#x23F1; <b id="logged"></b> today</span>
   </div>
 </div>
 
@@ -544,34 +569,38 @@
     return "#ffffff";
   }
 
-  var BLACK = "#08090b", BLOOD = "#7a0611", FLOOD_DAYS = 2;
-  // Days left to the line -> colour. Yellow at 6, orange at 4, red at 2, then the flood.
-  var RAMP = [[10, "#2fd36f"], [8, "#9fd62a"], [6, "#ffd60a"], [4, "#ff8a1f"], [2, "#ff3b30"]];
+  var NAVY = "#171b36", BLOOD = "#5a0a22", FLOOD_DAYS = 2, WHITE = "#f8f8f2";
+  // Dracula ramp over days left to the line: green, yellow at 6, orange at 4, red at 2, then the flood.
+  var RAMP = [[10, "#50fa7b"], [8, "#b8f56a"], [6, "#f1fa8c"], [4, "#ffb86c"], [2, "#ff5555"]];
+  var panelNow = NAVY;
 
-  function urgency(days) {
-    if (days > 10) return { fg: "#4da3ff", tide: "#4da3ff", panel: BLACK, flood: 0 };
-    if (days <= FLOOD_DAYS) {
-      var t = 1 - Math.max(days, 0) / FLOOD_DAYS;
-      return { fg: mix(RAMP[4][1], "#ffffff", t), tide: mix(RAMP[4][1], "#b3001b", t), panel: mix(BLACK, BLOOD, t), flood: t };
-    }
-    for (var i = 0; i < RAMP.length - 1; i++) {
-      if (days <= RAMP[i][0] && days >= RAMP[i + 1][0]) {
-        var f = (RAMP[i][0] - days) / (RAMP[i][0] - RAMP[i + 1][0]);
-        var c = mix(RAMP[i][1], RAMP[i + 1][1], f);
-        return { fg: c, tide: c, panel: BLACK, flood: 0 };
+  function ramp(stops, x) {
+    for (var i = 0; i < stops.length - 1; i++) {
+      if (x <= stops[i][0] && x >= stops[i + 1][0]) {
+        return mix(stops[i][1], stops[i + 1][1], (stops[i][0] - x) / (stops[i][0] - stops[i + 1][0]));
       }
     }
-    return { fg: RAMP[4][1], tide: RAMP[4][1], panel: BLACK, flood: 0 };
+    return x > stops[0][0] ? stops[0][1] : stops[stops.length - 1][1];
+  }
+  function urgency(days) {
+    if (days > 10) return { fg: "#8be9fd", tide: "#8be9fd", panel: NAVY, flood: 0 };
+    if (days <= FLOOD_DAYS) {
+      var t = 1 - Math.max(days, 0) / FLOOD_DAYS;
+      return { fg: mix(RAMP[4][1], "#ffe3ec", t), tide: mix(RAMP[4][1], "#b3001b", t), panel: mix(NAVY, BLOOD, t), flood: t };
+    }
+    var c = ramp(RAMP, days);
+    return { fg: c, tide: c, panel: NAVY, flood: 0 };
   }
 
   function paintUrgency(days) {
     var u = urgency(days);
+    panelNow = u.panel;
     prop("--fg", legible(u.fg, u.panel, 4.5));
     prop("--tide", u.tide);
     prop("--panel", u.panel);
-    prop("--soft", legible(mix(u.panel, "#ffffff", 0.72), u.panel, 7));
-    prop("--track", mix(u.panel, "#ffffff", 0.16));
-    prop("--edge", legible(mix(u.panel, "#ffffff", 0.42), u.panel, 3));
+    prop("--soft", legible(mix(u.panel, WHITE, 0.72), u.panel, 7));
+    prop("--track", mix(u.panel, WHITE, 0.14));
+    prop("--edge", legible(mix(u.panel, WHITE, 0.4), u.panel, 3));
     style("bleed", "opacity", u.flood.toFixed(3));
     style("tide", "opacity", (0.3 + 0.42 * (1 - Math.min(days, 10) / 10)).toFixed(3));
     flag("final", days > 0 && days <= FLOOD_DAYS);
@@ -828,6 +857,8 @@
     if (seen.ticks !== html) { seen.ticks = html; ticks.innerHTML = html; }
 
     var t = sunTimes(now), size = clamp(H * 0.1, 10, 16);
+    var cramped = H < 95; // when the hour bar squeezes the sky, drop the small labels
+    $("riseT").style.display = $("setT").style.display = cramped ? "none" : "";
     // Times sit just outside the arch's feet, clear of a low sun.
     setAttrs($("riseT"), { x: L - 8, y: hz - 5, "font-size": size, "text-anchor": "end" });
     setAttrs($("setT"), { x: R + 8, y: hz - 5, "font-size": size, "text-anchor": "start" });
@@ -911,6 +942,8 @@
     }
     style("dayFill", "width", pct.toFixed(3) + "%");
     text("dayPct", pct.toFixed(2) + "%");
+    // Today's own ramp: green with a full day, yellow at half, red as midnight nears.
+    prop("--day", legible(ramp([[100, "#50fa7b"], [50, "#f1fa8c"], [20, "#ffb86c"], [0, "#ff5555"]], pct), panelNow, 4.5));
     text("dayTime", hms(ms));
     var whole = Math.round(pct);
     if (seen.dayAria !== whole) {
@@ -933,7 +966,7 @@
     var m = Math.round(ms / MINUTE);
     return m >= 60 ? Math.floor(m / 60) + "h " + pad(m % 60) + "m" : m + "m";
   }
-  $("play").addEventListener("click", function () {
+  function toggleHour() {
     var now = nowMs();
     if (hour.startAt) {
       var dur = now - hour.startAt;
@@ -945,7 +978,9 @@
     }
     saveHour();
     tick();
-  });
+  }
+  $("play").addEventListener("click", toggleHour);
+  $("stop").addEventListener("click", toggleHour);
   $("copy").addEventListener("click", function () {
     var l = hour.last;
     if (!l) return;
@@ -959,9 +994,11 @@
     if (hour.day !== day) { hour.day = day; hour.logged = 0; saveHour(); }
     var running = !!hour.startAt, left = running ? BLOCK - (now - hour.startAt) : BLOCK;
     var over = running && left < 0;
+    $("hourbar").hidden = !running;
     style("hourFill", "width", (clamp(left / BLOCK, 0, 1) * 100).toFixed(2) + "%");
     text("hourRead", (over ? "−" : "") + ms2(left));
-    text("play", running ? "■" : "▶");
+    text("hourName", over ? "Overtime · stop when you're done" : "This hour · started " + clock(hour.startAt));
+    text("play", running ? "■ stop" : "▶ 60 min");
     $("play").setAttribute("aria-label", running ? "Stop and log this block" : "Start a 60-minute block");
     flag("overtime", over);
     var total = hour.logged + (running ? now - hour.startAt : 0);
@@ -1019,12 +1056,12 @@
     paintBattery(days);
     paintHour(now);
     if (over) {
-      prop("--fg", "#f2f3f5");
-      prop("--tide", "#4da3ff");
-      prop("--panel", BLACK);
-      prop("--soft", "#c4c7cd");
-      prop("--track", "#2b2e36");
-      prop("--edge", "#5a5f6b");
+      prop("--fg", WHITE);
+      prop("--tide", "#8be9fd");
+      prop("--panel", NAVY);
+      prop("--soft", "#c3c9ee");
+      prop("--track", "#2a3059");
+      prop("--edge", "#4b5390");
       style("bleed", "opacity", "0");
       style("tide", "opacity", "0.2");
       flag("final", false);
