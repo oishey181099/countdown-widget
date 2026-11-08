@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Deadline Countdown</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #faf7f2;
+    --ink: #3d3a34;
+    --soft: #6f6a60;
+    --line: #e7e1d6;
+    --amber: #a8741f;
+    --gutter: clamp(14px, 4vw, 28px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { height: 100%; background: var(--bg); }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: clamp(8px, 5vh, 20px) var(--gutter);
+    color: var(--ink);
+    font-family: ui-rounded, "SF Pro Rounded", "Hiragino Maru Gothic ProN",
+      "Arial Rounded MT Bold", "Nunito", "Varela Round", system-ui, sans-serif;
+    font-size: clamp(12px, 2.5vw, 15px);
+    line-height: 1.3;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  main { width: 100%; max-width: 760px; margin: 0 auto; }
+
+  .head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0 12px;
+  }
+
+  .name { font-weight: 600; }
+  .when { color: var(--soft); }
+
+  .clock {
+    display: flex;
+    gap: clamp(16px, 6vw, 44px);
+    margin-top: clamp(2px, 2vh, 8px);
+  }
+
+  .unit { display: flex; flex-direction: column; }
+
+  .num {
+    color: var(--amber);
+    font-size: clamp(30px, min(14vw, 36vh), 112px);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    min-width: 2ch; /* columns stay put when a value drops to one digit */
+  }
+
+  .lab { color: var(--soft); font-size: 0.86em; }
+
+  .quiet {
+    margin-top: clamp(4px, 3vh, 10px);
+    color: var(--soft);
+    font-size: clamp(16px, min(5vw, 12vh), 26px);
+  }
+
+  .other {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0 12px;
+    margin-top: clamp(6px, 4vh, 14px);
+    padding-top: clamp(4px, 3vh, 10px);
+    border-top: 1px solid var(--line);
+  }
+
+  .other .left { min-width: 0; }
+  .other .when { margin-left: 0.5em; }
+  .other .right { color: var(--soft); font-variant-numeric: tabular-nums; }
+
+  /* Keep the second line to one row where space is tight. */
+  @media (max-width: 460px) {
+    .year { display: none; }
+  }
+  @media (max-width: 340px) {
+    .other .when { display: none; }
+  }
+  @media (max-height: 130px) {
+    .lab { display: none; }
+  }
+</style>
+</head>
+<body>
+<main id="app" role="timer" aria-label="Countdown to deadlines">
+  <noscript>
+    PSYC2017 Final Exam: Thu 19 Nov 2026, 5:00pm.
+    SC window closes: Wed 11 Nov 2026, 11:59pm.
+  </noscript>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  // Fixed instants. Sydney is on AEDT (UTC+11) throughout November 2026, so
+  // these are correct whatever timezone the viewer's device is set to.
+  var DEADLINES = [
+    { name: "PSYC2017 Final Exam", when: "Thu 19 Nov", year: "2026", time: "5:00pm",
+      at: Date.parse("2026-11-19T17:00:00+11:00") },
+    { name: "SC window closes", when: "Wed 11 Nov", year: "2026", time: "11:59pm",
+      at: Date.parse("2026-11-11T23:59:00+11:00") }
+  ];
+
+  var MINUTE = 60000;
+  var app = document.getElementById("app");
+  var last = "";
+  var timer;
+
+  function esc(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  }
+
+  // Rounds up, so the clock never reads 0 0 0 while time is still left.
+  function parts(ms) {
+    var m = Math.ceil(ms / MINUTE);
+    return { d: Math.floor(m / 1440), h: Math.floor(m / 60) % 24, m: m % 60 };
+  }
+
+  function dateText(d) {
+    return esc(d.when) + '<span class="year"> ' + esc(d.year) + "</span>, " + esc(d.time);
+  }
+
+  function unit(n, word) {
+    return '<div class="unit"><span class="num">' + n + '</span><span class="lab">' +
+      word + (n === 1 ? "" : "s") + "</span></div>";
+  }
+
+  function doneText(next) {
+    return "done — " + (next ? "next: " + esc(next.name) : "nothing left on this list");
+  }
+
+  function render(now) {
+    var upcoming = DEADLINES.filter(function (d) { return d.at > now; })
+      .sort(function (a, b) { return a.at - b.at; });
+    var passed = DEADLINES.filter(function (d) { return d.at <= now; })
+      .sort(function (a, b) { return b.at - a.at; });
+    var next = upcoming[0] || null;
+    var hero = next || passed[0];
+    var other = DEADLINES[0] === hero ? DEADLINES[1] : DEADLINES[0];
+
+    var body;
+    if (next) {
+      var p = parts(hero.at - now);
+      body = '<div class="clock">' + unit(p.d, "day") + unit(p.h, "hour") + unit(p.m, "minute") + "</div>";
+    } else {
+      body = '<p class="quiet">' + doneText(null) + "</p>";
+    }
+
+    var right, otherDate = "";
+    if (other.at > now) {
+      var q = parts(other.at - now);
+      right = q.d + "d " + q.h + "h " + q.m + "m";
+      otherDate = '<span class="when">' + dateText(other) + "</span>";
+    } else {
+      right = next ? doneText(next) : "done";
+    }
+
+    var html =
+      '<div class="head"><span class="name">' + esc(hero.name) + "</span>" +
+      '<span class="when">' + dateText(hero) + "</span></div>" +
+      body +
+      '<div class="other"><span class="left"><span class="name">' + esc(other.name) + "</span>" +
+      otherDate + "</span>" +
+      '<span class="right">' + right + "</span></div>";
+
+    if (html !== last) {
+      app.innerHTML = html;
+      last = html;
+    }
+  }
+
+  // Both deadlines fall on a whole minute, so one update per minute is enough.
+  function tick() {
+    clearTimeout(timer);
+    var now = Date.now();
+    render(now);
+    timer = setTimeout(tick, MINUTE - (now % MINUTE) + 50);
+  }
+
+  // Timers stall while a device sleeps or a tab is hidden, so catch up on return.
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) tick();
+  });
+  window.addEventListener("pageshow", tick);
+  window.addEventListener("focus", tick);
+
+  tick();
+})();
+</script>
+</body>
+</html>
